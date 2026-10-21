@@ -1,6 +1,6 @@
 {
-  "version": "1.3.5",
-  "url": "https://raw.githubusercontent.com/rodrigoarratiap1-ship-it/audiosync-app/Principal/index.html",
-  "notes": "TEST fondo amarillo - fix loop actualizacion",
+  "version": "1.3.7",
+  "url": "https://cdn.jsdelivr.net/gh/rodrigoarratiap1-ship-it/audiosync-app@Principal/index.html",
+  "notes": "TEST verde - confirma auto-update funciona",
   "mandatory": false
 }

@@ -2,34 +2,34 @@
 <html lang="es" class="dark" data-ui-theme="dark_neutral">
 <head>
   <script>
-  // Loader v1.3.3 - limpia cache roto concatenado
+  // Loader v1.3.6 - CORS FIX - limpia cache roto
   (function(){
     try{
       if(window.__CACHED_APPLIED) return;
       var useCached = localStorage.getItem('audiosync_use_cached');
       var cached = localStorage.getItem('audiosync_cached_html');
-      if(cached && (cached.indexOf('##### APP:')>-1 || cached.indexOf('FIN DE index.html')>-1 || cached.indexOf('const AS_FIREBASE_DB_URL = "https://audiosync-740f3-default-rtdb.firebaseio.com"; const AS_GITHUB_REPO')>-1)){
+      if(cached && (cached.indexOf('##### APP:')>-1 || cached.indexOf('FIN DE index.html')>-1 || cached.length<5000)){
         console.log('Cache roto, limpiando');
         localStorage.removeItem('audiosync_use_cached');
         localStorage.removeItem('audiosync_cached_html');
-        localStorage.removeItem('audiosync_cached_version');
-        localStorage.removeItem('audiosync_current_version');
         return;
       }
-      if(useCached==='1' && cached && cached.length>5000){
+      if(useCached==='1' && cached && cached.length>10000){
+        console.log('[AudioSync] Aplicando cache v'+(localStorage.getItem('audiosync_cached_version')||'?'));
         window.__CACHED_APPLIED = true;
         document.open();
         document.write(cached);
         document.close();
         return;
       }
-    }catch(e){}
+    }catch(e){ console.log('loader err', e); }
   })();
   </script>
   <meta charset="UTF-8" />
 
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>AudioSync 1.3.5 — Planificador Amarillo TEST</title>
+  <title>AudioSync 1.3.7 GREEN TEST 1.3 — Planificador de Equipos</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -52,8 +52,8 @@
       --wed-badge-bg: #312E81; --wed-badge-text: #C7D2FE; --sun-tint: #171E30; --wed-tint: #151D32; --extra-tint: #0F292A;
       --shadow-soft: 0 8px 28px -4px rgba(0, 0, 0, 0.55);
     }
-    html[data-ui-theme="dark_neutral"] { /* TEST YELLOW v1.3.5 */
-      color-scheme: dark; --bg-main: #FEF08A; --bg-card: #16161A; --bg-subtle: #202026; --bg-elevated: #2A2A32;
+    html[data-ui-theme="dark_neutral"] {
+      color-scheme: dark; --bg-main: #0D0D10; --bg-card: #16161A; --bg-subtle: #202026; --bg-elevated: #2A2A32;
       --text-main: #F4F4F5; --text-muted: #A1A1AA; --border-col: #32323C; --sun-badge-bg: #991B1B; --sun-badge-text: #FECACA;
       --wed-badge-bg: #3730A3; --wed-badge-text: #E0E7FF; --sun-tint: #1C181C; --wed-tint: #181922; --extra-tint: #142824;
       --shadow-soft: 0 8px 28px -4px rgba(0, 0, 0, 0.65);
@@ -131,15 +131,11 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-col); border-radius: 9999px; }
   
-    html[data-ui-theme="dark_neutral"] {
-      --bg-main: #FEF08A !important;
-      --bg-card: #FEF9C3 !important;
-      --bg-subtle: #FDE047 !important;
-      --text-main: #422006 !important;
-      --text-muted: #854D0E !important;
-      --border-col: #EAB308 !important;
-    }
-    body { background-color: #FEF08A !important; }
+    
+    /* v1.3.7 VERDE */
+    html[data-ui-theme="dark_neutral"] { --bg-main: #86EFAC !important; --bg-card: #BBF7D0 !important; --bg-subtle: #4ADE80 !important; --text-main: #052E16 !important; }
+    body { background-color: #86EFAC !important; }
+
 
     </style>
 </head>
@@ -179,7 +175,7 @@
           <button id="btnGoCurrentMonth" onclick="goToCurrentMonth()" class="hidden px-2.5 py-1 rounded-lg text-xs font-bold surface-elevated hover:border-indigo-500 items-center gap-1"><i data-lucide="rotate-ccw" class="w-3 h-3"></i><span>Mes Actual</span></button>
           <div class="flex items-center surface-subtle rounded-lg p-0.5">
             <button onclick="changeMonth(-1)" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
-            <span id="monthLabel" data-test-version="1.3.5-yellow" class="w-[148px] text-xs font-bold capitalize text-center truncate select-none">Octubre 2026</span>
+            <span id="monthLabel" class="w-[148px] text-xs font-bold capitalize text-center truncate select-none">Octubre 2026</span>
             <button onclick="changeMonth(1)" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
           </div>
           <div class="flex items-center surface-subtle rounded-lg p-0.5">
@@ -2160,7 +2156,7 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
     }
     const AS_FIREBASE_DB_URL = "https://audiosync-740f3-default-rtdb.firebaseio.com";
     const AS_GITHUB_REPO = "rodrigoarratiap1-ship-it/audiosync-app";
-    const AS_LOCAL_VERSION = "1.3.5";
+    const AS_LOCAL_VERSION = "1.3.7";
     function getInstalledVersion(){ try{ return localStorage.getItem("audiosync_current_version") || localStorage.getItem("audiosync_cached_version") || AS_LOCAL_VERSION; }catch(e){ return AS_LOCAL_VERSION; } }
     const AS_DEV_SECRET = "76786471";
     const isDesktopElectron = Boolean(ipcRenderer);
@@ -2437,27 +2433,34 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
         var installed=(typeof getInstalledVersion==='function'?getInstalledVersion():AS_LOCAL_VERSION);
         if(stEl) stEl.textContent="Version instalada: v"+installed+" - Buscando...";
         var remote=null;
-        for(var br of ['Principal','main']){
+        var urls=[
+          "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@Principal/version.json?t="+Date.now(),
+          "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@main/version.json?t="+Date.now(),
+          "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/version.json?t="+Date.now(),
+          "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/Principal/version.json?t="+Date.now(),
+          "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/main/version.json?t="+Date.now()
+        ];
+        for(var u of urls){
           try{
-            var resp=await fetch("https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/"+br+"/version.json?t="+Date.now(),{cache:'no-store'});
-            if(resp.ok){ remote=await resp.json(); if(remote && remote.version) break; }
-          }catch(e){}
+            var resp=await fetch(u,{cache:'no-store'});
+            if(resp.ok){ 
+              var txt=await resp.text();
+              try{ remote=JSON.parse(txt); if(remote && remote.version) break; }catch(e){}
+            }
+          }catch(e){ console.log('check fail '+u, e); }
         }
         if(!remote){ 
           if(stEl) stEl.textContent="No se pudo verificar (v"+installed+")"; 
+          if(manualCheck && typeof showToast==='function') showToast('No se pudo verificar version (CORS?)', true);
           return; 
         }
-        // Si ya estamos en la misma version, oculta banner
         if(remote.version===installed){
           if(banner) banner.classList.add('hidden');
           if(btnUpd) btnUpd.classList.add('hidden');
           if(stEl) stEl.textContent="Estas al dia (v"+installed+")";
           if(manualCheck && typeof showToast==='function') showToast("Ya tienes la ultima version (v"+installed+")");
-          // Limpia flag de update si por alguna razon quedo
-          try{ localStorage.setItem('audiosync_current_version', installed); }catch(e){}
           return;
         }
-        // Si hay version nueva
         if(remote && remote.version && remote.version!==installed){
           if(textEl) textEl.textContent="Nueva version v"+remote.version+" disponible - "+(remote.notes||'Mejoras');
           if(banner) banner.classList.remove('hidden');
@@ -2469,34 +2472,59 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
 
 
 async function asCloud_applyUpdateNow() {
-      var pagesUrl = "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/?v=" + Date.now();
-      if(typeof showToast==='function') showToast('Descargando v'+(typeof getInstalledVersion==='function'?getInstalledVersion():'')+' -> nueva...');
-      var branches=['Principal','main'];
-      var newHtml=null; var remoteVersion=null;
-      for(var b=0;b<branches.length;b++){
-        var br=branches[b];
+      var stEl=document.getElementById('asCloud_settingsUpdateStatus');
+      if(stEl) stEl.textContent="Descargando actualizacion...";
+      if(typeof showToast==='function') showToast('Descargando actualizacion...');
+      var remoteVersion=null;
+      var newHtml=null;
+      // URLs con CORS permitido primero (jsDelivr y Pages)
+      var versionUrls=[
+        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@Principal/version.json?t="+Date.now(),
+        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@main/version.json?t="+Date.now(),
+        "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/version.json?t="+Date.now()
+      ];
+      var htmlUrls=[
+        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@Principal/index.html?t="+Date.now(),
+        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@main/index.html?t="+Date.now(),
+        "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/index.html?t="+Date.now(),
+        "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/Principal/index.html?t="+Date.now(),
+        "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/main/index.html?t="+Date.now()
+      ];
+      // 1. Obtener version remota
+      for(var i=0;i<versionUrls.length;i++){
         try{
-          var vResp=await fetch("https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/"+br+"/version.json?t="+Date.now(),{cache:'no-store'});
-          if(vResp.ok){ var vj=await vResp.json(); if(vj && vj.version) remoteVersion=vj.version; }
-          var rawUrl="https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/"+br+"/index.html?t="+Date.now();
-          var resp=await fetch(rawUrl,{cache:'no-store'});
+          var vr=await fetch(versionUrls[i],{cache:'no-store'});
+          if(vr.ok){
+            var txt=await vr.text();
+            var vj=JSON.parse(txt);
+            if(vj && vj.version){ remoteVersion=vj.version; console.log('Remote version '+remoteVersion+' from '+versionUrls[i]); break; }
+          }
+        }catch(e){ console.log('version fetch fail '+versionUrls[i], e); }
+      }
+      // 2. Obtener html
+      for(var j=0;j<htmlUrls.length;j++){
+        try{
+          var resp=await fetch(htmlUrls[j],{cache:'no-store'});
           if(!resp.ok) continue;
           var txt=await resp.text();
-          if(txt.length>5000 && txt.indexOf('AudioSync')>-1){
+          if(txt.length>10000 && txt.indexOf('<!DOCTYPE html>')>-1 && txt.indexOf('AudioSync')>-1){
+            // Limpia si viene concatenado
             var s=txt.indexOf('<!DOCTYPE html>');
             var e=txt.lastIndexOf('</html>');
             if(s>-1 && e>-1){ txt=txt.substring(s, e+7); }
             if(remoteVersion){ txt=txt.replace(/AS_LOCAL_VERSION\s*=\s*["'][^"']*["']/, 'AS_LOCAL_VERSION = "'+remoteVersion+'"'); }
-            newHtml=txt; break;
+            newHtml=txt; 
+            console.log('HTML obtenido de '+htmlUrls[j]+' len '+txt.length);
+            break;
           }
-        }catch(e){ console.log('fetch fail', e); }
+        }catch(e){ console.log('html fetch fail '+htmlUrls[j], e); }
       }
       if(!newHtml){ 
-        if(typeof showToast==='function') showToast('No se pudo descargar', true);
-        window.location.href=pagesUrl; return; 
+        if(stEl) stEl.textContent="Error al descargar (CORS). Prueba mas tarde";
+        if(typeof showToast==='function') showToast('Error CORS al descargar. Revisa GitHub Pages activo', true);
+        return;
       }
       try{
-        // Guarda todo
         localStorage.setItem('audiosync_cached_html', newHtml);
         localStorage.setItem('audiosync_use_cached','1');
         localStorage.setItem('audiosync_cached_at', Date.now().toString());
@@ -2504,14 +2532,14 @@ async function asCloud_applyUpdateNow() {
           localStorage.setItem('audiosync_cached_version', remoteVersion);
           localStorage.setItem('audiosync_current_version', remoteVersion);
         }
-        // Oculta banner antes de recargar para evitar loop visual
+        if(stEl) stEl.textContent="Descargado v"+(remoteVersion||'')+" - Reiniciando...";
         var banner=document.getElementById('asCloud_updateBanner');
         if(banner) banner.classList.add('hidden');
         if(typeof showToast==='function') showToast('Actualizado a v'+(remoteVersion||'')+'! Reiniciando...');
-        setTimeout(function(){ location.reload(); }, 900);
+        setTimeout(function(){ location.reload(); }, 1000);
       }catch(e){ 
         console.log('save fail', e);
-        window.location.href=pagesUrl; 
+        if(stEl) stEl.textContent="Error al guardar: "+e.message;
       }
     }
 
