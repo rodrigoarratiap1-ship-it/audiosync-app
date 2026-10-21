@@ -111,16 +111,23 @@
     .win-btn { width: 32px; height: 24px; border-radius: 6px; border: 1px solid transparent; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: background-color 0.15s ease; }
     .win-btn:hover { background: var(--bg-subtle); color: var(--text-main); border-color: var(--border-col); }
     .win-btn.close:hover { background: #e50914; color: #FFFFFF; }
+* { -webkit-tap-highlight-color: transparent; }
+    .cal-grid-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.35rem; }
+    .sticky-avail-col { position: sticky; left: 0; z-index: 20; background-color: var(--bg-card); box-shadow: 3px 0 8px -2px rgba(0,0,0,0.35); }
+    #toast { bottom: 62px !important; left: 12px !important; right: auto !important; }
     @media (max-width: 768px) {
-      #customTitlebar { display: none !important; }
+      #customTitlebar, #btnOpenBatch, #btnOpenExportTop { display: none !important; }
       header.sticky { top: 0 !important; }
       body { padding-bottom: 76px !important; }
       #asCloud_mobileBottomNav { display: grid !important; }
       #asCloud_profileBadgeWrap { bottom: 62px !important; left: 8px !important; }
       #fabBtn { bottom: 62px !important; right: 8px !important; }
+      #toast { bottom: 112px !important; left: 8px !important; }
       .cal-grid-7, .cal-grid-2 { grid-template-columns: 1fr !important; gap: 0.55rem !important; }
       .non-service-day { display: none !important; }
-    }
+      body[data-mob-day="wed"] .cell-sun-item { display: none !important; }
+      body[data-mob-day="sun"] .cell-wed-item { display: none !important; }
+    }    
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-col); border-radius: 9999px; }
@@ -142,7 +149,10 @@
   </div>
   <div id="asCloud_updateBanner" class="hidden fixed top-9 left-0 right-0 z-[120] bg-indigo-600 text-white px-3 py-1.5 text-xs font-bold flex items-center justify-between shadow-lg">
     <div class="flex items-center gap-2"><i data-lucide="download-cloud" class="w-4 h-4"></i><span id="asCloud_updateText">Nueva actualización disponible</span></div>
-    <button onclick="asCloud_applyUpdateNow()" class="px-2.5 py-0.5 rounded bg-white text-indigo-700 font-extrabold hover:bg-indigo-50">Actualizar ahora</button>
+    <div class="flex items-center gap-1.5">
+      <button onclick="asCloud_applyUpdateNow()" class="px-2.5 py-0.5 rounded bg-white text-indigo-700 font-extrabold hover:bg-indigo-50">Actualizar ahora</button>
+      <button onclick="document.getElementById('asCloud_updateBanner').classList.add('hidden')" class="p-0.5 rounded hover:bg-white/20" title="Cerrar aviso"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
   </div>
   <div id="globalSlotDropdown" class="hidden fixed z-[9999] w-64 surface-card rounded-xl shadow-2xl border-2 border-indigo-500/40 py-1 max-h-64 overflow-y-auto"></div>
   <header class="sticky top-0 z-30 surface-card border-b border-theme">
@@ -166,15 +176,12 @@
             <button onclick="undoLastAction()" id="btnUndo" disabled class="p-1 rounded disabled:opacity-30 hover:bg-black/10 dark:hover:bg-white/10"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i></button>
             <button onclick="redoLastAction()" id="btnRedo" disabled class="p-1 rounded disabled:opacity-30 hover:bg-black/10 dark:hover:bg-white/10"><i data-lucide="redo-2" class="w-3.5 h-3.5"></i></button>
           </div>
-          <button onclick="quickToggleLightDark()" id="themeBtn" class="p-1.5 rounded-lg surface-subtle hover:opacity-90"><i data-lucide="sun" id="themeIcon" class="w-3.5 h-3.5"></i></button>
-          <button id="btnOpenSettings" onclick="openModal('settingsModal')" class="p-1.5 rounded-lg surface-subtle hover:border-indigo-500"><i data-lucide="settings" class="w-3.5 h-3.5"></i></button>
+          <button id="btnOpenSettings" onclick="openModal('settingsModal')" class="p-1.5 rounded-lg surface-subtle hover:border-indigo-500" title="Configuración y Vistas"><i data-lucide="settings" class="w-3.5 h-3.5"></i></button>
         </div>
       </div>
       <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-theme flex-wrap">
         <div class="flex items-center gap-1.5 flex-wrap">
-          <button id="btnViewMode" onclick="toggleViewMode()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:opacity-90 flex items-center gap-1.5"><i data-lucide="calendar-range" class="w-3.5 h-3.5"></i><span id="viewModeText">Solo Cultos</span></button>
-          <button id="btnDenseMode" onclick="toggleDenseMode()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:opacity-90 flex items-center gap-1.5"><i data-lucide="minimize-2" class="w-3.5 h-3.5"></i><span id="denseModeText">Compactar</span></button>
-          <button id="btnHidePast" onclick="toggleHidePast()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:opacity-90 flex items-center gap-1.5"><i data-lucide="eye-off" class="w-3.5 h-3.5"></i><span id="hidePastText">Ocultar Días Anteriores</span></button>
+          <button id="btnCalendarMode" onclick="toggleCalendarGridMode()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5"><i data-lucide="grid" class="w-3.5 h-3.5 text-indigo-400"></i><span id="calGridModeText">Modo Calendario</span></button>
           <button id="btnNextWeek" onclick="toggleIncludeNextWeek()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:opacity-90 flex items-center gap-1.5"><i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i><span id="nextWeekBtnLabel">+1ª Sem. Nov</span></button>
         </div>
         <div class="flex items-center gap-1.5 flex-wrap">
@@ -189,7 +196,7 @@
           <button id="btnLockAllMonth" onclick="toggleLockAllMonth()" class="p-1.5 rounded-lg surface-subtle hover:text-amber-500"><i data-lucide="lock" class="w-3.5 h-3.5"></i></button>
           <button id="btnClearMonth" onclick="clearMonthUnlocked()" class="p-1.5 rounded-lg surface-subtle hover:text-rose-500"><i data-lucide="eraser" class="w-3.5 h-3.5"></i></button>
           <button id="btnAutoAllTeams" onclick="autoScheduleAllEnabledTeams()" class="hidden px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white items-center gap-1.5 shadow-sm"><i data-lucide="layers" class="w-3.5 h-3.5"></i><span>Armar Todos</span></button>
-          <button onclick="openExportModal()" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm"><i data-lucide="share-2" class="w-3.5 h-3.5"></i><span>Exportar</span></button>
+          <button id="btnOpenExportTop" onclick="openExportModal()" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm"><i data-lucide="share-2" class="w-3.5 h-3.5"></i><span>Exportar</span></button>
         </div>
       </div>
     </div>
@@ -203,7 +210,7 @@
     <div id="calendarGrid" class="flex-1"></div>
   </main>
   <div id="asCloud_profileBadgeWrap" class="fixed bottom-4 left-4 z-40 flex items-center gap-1.5">
-    <button onclick="asCloud_openIdentityModal()" class="surface-card px-3 py-2 rounded-full shadow-xl border border-indigo-500/40 flex items-center gap-2 text-xs font-bold hover:border-indigo-500">
+    <button onpointerdown="asCloud_startProfileHold(event)" onpointerup="asCloud_endProfileHold(event)" onpointercancel="asCloud_cancelProfileHold()" class="surface-card px-3 py-2 rounded-full shadow-xl border border-indigo-500/40 flex items-center gap-2 text-xs font-bold hover:border-indigo-500 select-none" style="touch-action:manipulation;">
       <span id="asCloud_syncDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
       <i data-lucide="user" class="w-3.5 h-3.5 text-indigo-400"></i>
       <span id="asCloud_currentUserName">Elegir Perfil</span>
@@ -230,15 +237,15 @@
       <i data-lucide="users" class="w-4 h-4"></i><span>Equipo</span>
     </button>
   </div>
-  <nav id="asCloud_mobileBottomNav" class="hidden fixed bottom-0 left-0 right-0 z-40 surface-card border-t border-theme px-2 py-1.5 grid-cols-4 gap-1 text-[10px] font-bold text-center">
-    <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="flex flex-col items-center justify-center py-1 rounded-lg text-indigo-500"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span>Calendario</span></button>
+  <nav id="asCloud_mobileBottomNav" class="hidden fixed bottom-0 left-0 right-0 z-40 surface-card border-t border-theme px-2 py-1.5 grid-cols-3 gap-1 text-[10px] font-bold text-center">
+    <button onclick="toggleCalendarGridMode()" class="flex flex-col items-center justify-center py-1 rounded-lg text-indigo-500"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span id="mobNavCalLabel">Modo Mes</span></button>
     <button onclick="openBatchModalNormal()" class="flex flex-col items-center justify-center py-1 rounded-lg text-muted-theme hover:text-main"><i data-lucide="calendar-check-2" class="w-4 h-4 mb-0.5"></i><span>Disponibilidad</span></button>
     <button onclick="openExportModal()" class="flex flex-col items-center justify-center py-1 rounded-lg text-muted-theme hover:text-main"><i data-lucide="share-2" class="w-4 h-4 mb-0.5"></i><span>Exportar</span></button>
-    <button onclick="asCloud_openIdentityModal()" class="flex flex-col items-center justify-center py-1 rounded-lg text-muted-theme hover:text-main"><i data-lucide="user-check" class="w-4 h-4 mb-0.5"></i><span id="asCloud_mobileNavUser">Perfil</span></button>
   </nav>
-  <div id="batchModal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
-    <div class="surface-card rounded-2xl max-w-6xl w-full p-4 max-h-[92vh] flex flex-col shadow-2xl">
-      <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-theme">
+  <div id="batchModal" onclick="if(event.target===this) closeBatchModal()" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="surface-card rounded-2xl max-w-6xl w-full p-4 max-h-[92vh] flex flex-col shadow-2xl relative">
+      <button onclick="closeBatchModal()" class="absolute top-3 right-3 p-1.5 rounded-lg text-muted-theme opacity-50 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-theme pr-7">
         <div class="flex items-center gap-2 flex-wrap">
           <i data-lucide="calendar-check-2" class="w-4 h-4"></i>
           <h2 id="batchModalTitle" class="font-bold text-sm">Disponibilidad</h2>
@@ -255,7 +262,6 @@
             <button id="btnModeAvail" onclick="setBatchPanelMode('avail')" class="px-2.5 py-1 rounded-lg">Disponibilidad</button>
             <button id="btnModeAssign" onclick="setBatchPanelMode('assign')" class="px-2.5 py-1 rounded-lg">Poner en Turno</button>
           </div>
-          <button onclick="closeBatchModal()" class="p-1 rounded-lg surface-subtle"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
       </div>
       <div id="rescueBanner" class="hidden mt-2.5 px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/50 text-xs font-bold items-center justify-between gap-2">
@@ -366,11 +372,11 @@ Gustavo: 4, 11, 25</textarea>
       </div>
     </div>
   </div>
-  <div id="settingsModal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
-    <div class="surface-card rounded-2xl max-w-3xl w-full p-4 max-h-[92vh] flex flex-col shadow-2xl">
-      <div class="flex items-center justify-between pb-3 border-b border-theme">
-        <div class="flex items-center gap-2"><i data-lucide="settings" class="w-4 h-4"></i><h2 class="font-bold text-sm">Configuración General y Opciones Avanzadas</h2></div>
-        <button onclick="closeModal('settingsModal')" class="p-1 rounded-lg surface-subtle"><i data-lucide="x" class="w-4 h-4"></i></button>
+  <div id="settingsModal" onclick="if(event.target===this) closeModal('settingsModal')" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="surface-card rounded-2xl max-w-3xl w-full p-4 max-h-[92vh] flex flex-col shadow-2xl relative">
+      <button onclick="closeModal('settingsModal')" class="absolute top-3 right-3 p-1.5 rounded-lg text-muted-theme opacity-60 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <div class="flex items-center justify-between pb-3 border-b border-theme pr-7">
+        <div class="flex items-center gap-2"><i data-lucide="settings" class="w-4 h-4"></i><h2 class="font-bold text-sm">Configuración y Estilo de Vista</h2></div>
       </div>
       <div class="overflow-y-auto my-3 space-y-4 flex-1 pr-1 text-xs">
         <div class="surface-subtle rounded-xl p-3 space-y-2">
@@ -382,24 +388,45 @@ Gustavo: 4, 11, 25</textarea>
             <button onclick="setUiTheme('light_clean')" id="uiTheme_light_clean" class="p-2.5 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-3 rounded bg-[#F1F5F9] border border-[#94A3B8]"></span><span>Claro Pizarra</span></button>
           </div>
         </div>
-        <div class="surface-subtle rounded-xl p-3 space-y-2.5">
-          <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Elementos Visibles en el Calendario</span>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Indicador de Días Seguidos / Descanso</span><input type="checkbox" id="pref_showStreakBadge" class="switch-input" onchange="updateUiPref('showStreakBadge', this.checked)" /><span class="switch-slider emerald"></span></label>
-            <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Notas en los Cultos</span><input type="checkbox" id="pref_showNotesBtn" class="switch-input" onchange="updateUiPref('showNotesBtn', this.checked)" /><span class="switch-slider emerald"></span></label>
-            <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Tira de Lucecitas de Disponibilidad</span><input type="checkbox" id="pref_showAvailDots" class="switch-input" onchange="updateUiPref('showAvailDots', this.checked)" /><span class="switch-slider emerald"></span></label>
-            <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Botones de Clonar / Pegar Día</span><input type="checkbox" id="pref_showCloneBtns" class="switch-input" onchange="updateUiPref('showCloneBtns', this.checked)" /><span class="switch-slider emerald"></span></label>
-            <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Botón Intercambiar Puestos (⇄)</span><input type="checkbox" id="pref_showQuickSwapBtn" class="switch-input" onchange="updateUiPref('showQuickSwapBtn', this.checked)" /><span class="switch-slider emerald"></span></label>
-            <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Destacar Reemplazos (10 seg)</span><input type="checkbox" id="pref_highlightSwaps" class="switch-input" onchange="updateUiPref('highlightSwaps', this.checked)" /><span class="switch-slider emerald"></span></label>
+        <div class="surface-subtle rounded-xl p-3 space-y-2">
+          <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Estilo de Vista del Calendario</span>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button id="btnViewMode" onclick="toggleViewMode()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="calendar-range" class="w-3.5 h-3.5"></i><span id="viewModeText">Vista 7 Días</span></button>
+            <button id="btnCalendarModeInSettings" onclick="toggleCalendarGridMode()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="grid" class="w-3.5 h-3.5"></i><span>Modo Calendario Mes</span></button>
+            <button id="btnDenseMode" onclick="toggleDenseMode()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="minimize-2" class="w-3.5 h-3.5"></i><span id="denseModeText">Compactar</span></button>
+            <button id="btnHidePast" onclick="toggleHidePast()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="eye-off" class="w-3.5 h-3.5"></i><span id="hidePastText">Ocultar Pasados</span></button>
           </div>
         </div>
-        <div class="surface-subtle rounded-xl p-3 space-y-2.5">
-          <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Equipos Configurados</span>
-          <div id="settingsTeamsList" class="space-y-2"></div>
-          <div class="pt-2 border-t border-theme flex flex-wrap items-center gap-2">
-            <input id="newTeamNameInput" type="text" placeholder="Nuevo equipo (ej. Alabanza, Ujieres)" class="px-2.5 py-1.5 rounded-lg surface-card border border-theme text-xs flex-1" />
-            <input id="newTeamColorInput" type="color" value="#10B981" class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
-            <button onclick="createNewTeam()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold">+ Crear Equipo</button>
+        <div id="adminSettingsSection" class="space-y-4">
+          <div class="surface-subtle rounded-xl p-3 space-y-2.5">
+            <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Elementos Visibles en el Calendario</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Indicador de Días Seguidos / Descanso</span><input type="checkbox" id="pref_showStreakBadge" class="switch-input" onchange="updateUiPref('showStreakBadge', this.checked)" /><span class="switch-slider emerald"></span></label>
+              <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Notas en los Cultos</span><input type="checkbox" id="pref_showNotesBtn" class="switch-input" onchange="updateUiPref('showNotesBtn', this.checked)" /><span class="switch-slider emerald"></span></label>
+              <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Tira de Lucecitas de Disponibilidad</span><input type="checkbox" id="pref_showAvailDots" class="switch-input" onchange="updateUiPref('showAvailDots', this.checked)" /><span class="switch-slider emerald"></span></label>
+              <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Botones de Clonar / Pegar Día</span><input type="checkbox" id="pref_showCloneBtns" class="switch-input" onchange="updateUiPref('showCloneBtns', this.checked)" /><span class="switch-slider emerald"></span></label>
+              <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Botón Intercambiar Puestos (⇄)</span><input type="checkbox" id="pref_showQuickSwapBtn" class="switch-input" onchange="updateUiPref('showQuickSwapBtn', this.checked)" /><span class="switch-slider emerald"></span></label>
+              <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Destacar Reemplazos (10 seg)</span><input type="checkbox" id="pref_highlightSwaps" class="switch-input" onchange="updateUiPref('highlightSwaps', this.checked)" /><span class="switch-slider emerald"></span></label>
+            </div>
+          </div>
+          <div class="surface-subtle rounded-xl p-3 space-y-2.5">
+            <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Equipos Configurados</span>
+            <div id="settingsTeamsList" class="space-y-2"></div>
+            <div class="pt-2 border-t border-theme flex flex-wrap items-center gap-2">
+              <input id="newTeamNameInput" type="text" placeholder="Nuevo equipo (ej. Alabanza, Ujieres)" class="px-2.5 py-1.5 rounded-lg surface-card border border-theme text-xs flex-1" />
+              <input id="newTeamColorInput" type="color" value="#10B981" class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
+              <button onclick="createNewTeam()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold">+ Crear Equipo</button>
+            </div>
+          </div>
+        </div>
+        <div class="surface-subtle rounded-xl p-3 flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div class="font-bold flex items-center gap-1.5"><i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-400"></i><span>Actualizaciones de la App</span></div>
+            <div id="asCloud_settingsUpdateStatus" class="text-[11px] text-muted-theme">Versión instalada: v1.2.0</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="asCloud_checkForGitHubUpdates(true)" class="px-3 py-1.5 rounded-lg surface-card font-bold hover:border-indigo-500">Buscar</button>
+            <button id="asCloud_btnSettingsUpdateNow" onclick="asCloud_applyUpdateNow()" class="hidden px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">Instalar Actualización</button>
           </div>
         </div>
         <div class="surface-subtle rounded-xl p-3 flex items-center justify-between flex-wrap gap-2">
@@ -410,6 +437,25 @@ Gustavo: 4, 11, 25</textarea>
             <label class="px-3 py-1.5 rounded-lg surface-card font-bold hover:border-indigo-500 cursor-pointer">Cargar Backup<input type="file" accept=".json" class="hidden" onchange="importBackupJSON(event)" /></label>
           </div>
         </div>
+        <details class="surface-subtle rounded-xl p-3 border border-theme">
+          <summary class="font-bold cursor-pointer text-[11px] text-muted-theme hover:text-main">Avanzado (Dev)</summary>
+          <div class="mt-2.5 space-y-3">
+            <div class="flex gap-2">
+              <input id="asCloud_devKeyInput" type="password" placeholder="Ingresa credencial" class="flex-1 px-2.5 py-1.5 rounded-lg surface-card border border-theme mono text-xs" onkeydown="if(event.key==='Enter') asCloud_verifyDevKey()" />
+              <button onclick="asCloud_verifyDevKey()" class="px-3 py-1.5 rounded-lg surface-card border border-theme font-bold">Verificar</button>
+            </div>
+            <div id="asCloud_devControlPanel" class="hidden space-y-3 pt-2 border-t border-theme">
+              <div class="text-[11px] font-bold text-rose-400">Panel Maestro Dev — Solicitudes de Cuenta Admin:</div>
+              <div id="asCloud_devRequestsList" class="space-y-1.5"></div>
+              <div class="text-[11px] font-bold text-emerald-400 pt-1">Cuentas de Administrador Activas:</div>
+              <div id="asCloud_devActiveAdminsList" class="space-y-1.5"></div>
+              <div class="pt-2 border-t border-theme flex gap-2 flex-wrap">
+                <button onclick="asCloud_pushStateToFirebase('Sincronización forzada por Dev')" class="px-2.5 py-1 rounded bg-indigo-600 text-white font-bold text-[11px]">Forzar Push a Firebase</button>
+                <button onclick="localStorage.removeItem('audiosync_use_cached'); localStorage.removeItem('audiosync_cached_html'); showToast('Caché de actualización limpiada');" class="px-2.5 py-1 rounded surface-card border border-theme font-bold text-[11px]">Limpiar Caché GitHub</button>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -513,25 +559,53 @@ Gustavo: 4, 11, 25</textarea>
       </div>
     </div>
   </div>
-  <div id="asCloud_identityModal" class="fixed inset-0 z-[110] hidden bg-black/75 backdrop-blur-xs flex items-center justify-center p-3">
-    <div class="surface-card rounded-2xl max-w-md w-full p-4 shadow-2xl border border-indigo-500/40 space-y-3 text-xs">
-      <div class="flex items-center justify-between border-b border-theme pb-2">
-        <div class="flex items-center gap-2"><i data-lucide="user-check" class="w-4 h-4 text-indigo-500"></i><h3 class="font-bold text-sm">Perfil del Dispositivo y Notificaciones</h3></div>
-        <button onclick="closeModal('asCloud_identityModal')" class="p-1 rounded surface-subtle"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+  <div id="asCloud_identityModal" onclick="if(event.target===this) closeModal('asCloud_identityModal')" class="fixed inset-0 z-[110] hidden bg-black/75 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="surface-card rounded-2xl max-w-md w-full p-4 shadow-2xl border border-indigo-500/40 space-y-3 text-xs relative max-h-[92vh] overflow-y-auto">
+      <button onclick="closeModal('asCloud_identityModal')" class="absolute top-3 right-3 p-1 rounded text-muted-theme opacity-60 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <div class="flex items-center gap-2 border-b border-theme pb-2 pr-6">
+        <i data-lucide="user-check" class="w-4 h-4 text-indigo-500"></i><h3 class="font-bold text-sm">Tu Perfil y Cuentas de Administrador</h3>
       </div>
-      <p class="text-muted-theme leading-relaxed">Selecciona tu nombre para resaltar tus turnos automáticamente, marcar tu disponibilidad y recibir notificaciones:</p>
-      <div id="asCloud_membersSelectGrid" class="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1"></div>
+      <p class="text-muted-theme leading-relaxed">Elige quién eres. Puedes ver el horario completo de todos tus compañeros libremente:</p>
+      <div id="asCloud_membersSelectGrid" class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-1"></div>
       <div class="surface-subtle rounded-xl p-2.5 flex items-center justify-between">
         <div><div class="font-bold">Notificaciones de mis turnos</div><div class="text-[10px] text-muted-theme">Avisarme cambios y publicación de horarios</div></div>
         <label class="switch-label"><input type="checkbox" id="asCloud_chkNotifyMe" class="switch-input" checked onchange="asCloud_toggleMyNotifications(this.checked)" /><span class="switch-slider emerald"></span></label>
       </div>
-      <div class="surface-subtle rounded-xl p-2.5 space-y-2 border border-theme">
-        <div class="flex items-center justify-between"><span class="font-bold text-indigo-400">Modo Jefe de Equipo (Edición Total)</span><span id="asCloud_adminStatusLabel" class="text-[10px] mono px-1.5 py-0.5 rounded surface-card">Modo Integrante</span></div>
-        <div class="flex gap-2">
-          <input id="asCloud_pinInput" type="password" maxlength="8" placeholder="PIN de encargado" class="flex-1 px-2.5 py-1.5 rounded-lg surface-card border border-theme text-xs mono" onkeydown="if(event.key==='Enter') asCloud_verifyAdminPin()" />
-          <button onclick="asCloud_verifyAdminPin()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">Activar / Salir</button>
+      <div class="surface-subtle rounded-xl p-3 space-y-2.5 border border-theme">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-indigo-400">Acceso Líder</span>
+          <span id="asCloud_adminStatusLabel" class="text-[10px] mono px-1.5 py-0.5 rounded surface-card">Modo Integrante</span>
         </div>
+        <div id="asCloud_adminLoginBox" class="space-y-2">
+          <div class="text-[10px] text-muted-theme">Si ya tienes cuenta de Líder aprobada, inicia sesión (queda guardada):</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            <select id="asCloud_adminUserSelect" class="px-2 py-1.5 rounded-lg surface-card border border-theme text-xs font-bold"></select>
+            <input id="asCloud_pinInput" type="password" placeholder="Tu clave de Líder" class="px-2.5 py-1.5 rounded-lg surface-card border border-theme text-xs mono" onkeydown="if(event.key==='Enter') asCloud_verifyAdminPin()" />
+          </div>
+          <div class="flex gap-2">
+            <button onclick="asCloud_verifyAdminPin()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">Iniciar Sesión Líder</button>
+            <button id="asCloud_btnLogoutAdmin" onclick="asCloud_logoutAdmin()" class="hidden px-3 py-1.5 rounded-lg bg-rose-600/20 text-rose-400 font-bold">Cerrar Sesión</button>
+          </div>
+        </div>
+        <details class="pt-1 border-t border-theme">
+          <summary class="cursor-pointer font-bold text-[11px] text-emerald-400 hover:underline">+ Solicitar cuenta de Líder</summary>
+          <div class="mt-2 space-y-2">
+            <p class="text-[10px] text-muted-theme">Elige tu nombre y define tu clave secreta para solicitar permisos de Líder:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              <select id="asCloud_reqAdminMemberSelect" class="px-2 py-1.5 rounded-lg surface-card border border-theme text-xs font-bold"></select>
+              <input id="asCloud_reqAdminPass" type="password" placeholder="Define tu clave" class="px-2.5 py-1.5 rounded-lg surface-card border border-theme text-xs mono" />
+            </div>
+            <button onclick="asCloud_requestAdminAccount()" class="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold">Enviar Solicitud</button>
+          </div>
+        </details>
       </div>
+    </div>
+  </div>
+  <div id="dayDetailModal" onclick="if(event.target===this) closeModal('dayDetailModal')" class="fixed inset-0 z-[95] hidden bg-black/65 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="surface-card rounded-2xl max-w-md w-full p-4 shadow-2xl border border-indigo-500/40 relative space-y-3">
+      <button onclick="closeModal('dayDetailModal')" class="absolute top-3 right-3 p-1 rounded text-muted-theme opacity-60 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <div class="flex items-center gap-2 pr-6"><i data-lucide="calendar" class="w-4 h-4 text-indigo-400"></i><h3 id="dayDetailModalTitle" class="font-bold text-sm">Detalle del Día</h3></div>
+      <div id="dayDetailModalBody" class="space-y-2"></div>
     </div>
   </div>
   <div id="toast" class="fixed bottom-4 left-4 z-50 hidden px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-xl items-center gap-2">
@@ -855,7 +929,10 @@ Gustavo: 4, 11, 25</textarea>
       document.getElementById('btnOpenBatch').classList.toggle('hidden', isMonthReadOnly());
       document.getElementById('btnOpenAi').classList.toggle('hidden', readOnly);
       document.getElementById('btnOpenTeamModal').classList.toggle('hidden', !asCloud_canEditCalendar());
-      document.getElementById('btnOpenSettings').classList.toggle('hidden', !asCloud_canEditCalendar());
+      const admSec = document.getElementById('adminSettingsSection');
+if (admSec) admSec.classList.toggle('hidden', !asCloud_canEditCalendar());
+const calModeTxt = document.getElementById('calGridModeText');
+if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjetas' : 'Modo Calendario';
       document.getElementById('scheduleActionGroup').classList.toggle('hidden', readOnly);
       document.getElementById('btnLockAllMonth').classList.toggle('hidden', readOnly);
       document.getElementById('btnClearMonth').classList.toggle('hidden', readOnly);
@@ -889,25 +966,58 @@ Gustavo: 4, 11, 25</textarea>
         document.getElementById('alertText').textContent = `${team.name}: hay ${missingCount} ${missingCount === 1 ? 'culto próximo con tarea pendiente' : 'cultos próximos con tareas pendientes'}`;
       } else { alertBanner.classList.add('hidden'); alertBanner.classList.remove('flex'); }
     }
+    let mobileDayFilter = 'all';
+    function toggleMobileDayFilter(target) {
+      mobileDayFilter = (mobileDayFilter === target) ? 'all' : target;
+      document.body.setAttribute('data-mob-day', mobileDayFilter);
+      renderCalendarHeader();
+    }
+    function toggleCalendarGridMode() {
+      state.viewMode = state.viewMode === 'cal' ? '7col' : 'cal';
+      renderAll();
+    }
     function renderCalendarHeader() {
       const header = document.getElementById('calendarHeader');
+      if (state.viewMode === 'cal') {
+        header.className = 'cal-grid-month text-center text-[10px] font-extrabold uppercase tracking-wider text-muted-theme px-0.5';
+        header.innerHTML = `<div>Lun</div><div>Mar</div><div class="text-indigo-400">Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div class="text-amber-400">Dom</div>`;
+        return;
+      }
+      const wedActive = mobileDayFilter === 'wed' ? 'ring-2 ring-white scale-[1.02]' : (mobileDayFilter === 'sun' ? 'opacity-40' : '');
+      const sunActive = mobileDayFilter === 'sun' ? 'ring-2 ring-white scale-[1.02]' : (mobileDayFilter === 'wed' ? 'opacity-40' : '');
       if (state.viewMode === '2col') {
         header.className = 'cal-grid-2 text-center text-[11px] font-bold uppercase tracking-wider px-0.5';
-        header.innerHTML = `<div class="py-1 rounded-lg badge-wed">Miércoles</div><div class="py-1 rounded-lg badge-sun">Domingos</div>`;
+        header.innerHTML = `<button onclick="toggleMobileDayFilter('wed')" class="py-1.5 rounded-lg badge-wed transition-all ${wedActive}">Miércoles ${mobileDayFilter==='wed'?'(Solo Mié)':''}</button><button onclick="toggleMobileDayFilter('sun')" class="py-1.5 rounded-lg badge-sun transition-all ${sunActive}">Domingos ${mobileDayFilter==='sun'?'(Solo Dom)':''}</button>`;
       } else {
         header.className = 'cal-grid-7 text-center text-[11px] font-bold uppercase tracking-wider text-muted-theme px-0.5';
-        header.innerHTML = `<div class="py-1 non-service-day">Lun</div><div class="py-1 non-service-day">Mar</div><div class="py-1 rounded-lg badge-wed">Miércoles</div><div class="py-1 non-service-day">Jue</div><div class="py-1 non-service-day">Vie</div><div class="py-1 non-service-day">Sáb</div><div class="py-1 rounded-lg badge-sun">Domingo</div>`;
+        header.innerHTML = `<div class="py-1 non-service-day">Lun</div><div class="py-1 non-service-day">Mar</div><button onclick="toggleMobileDayFilter('wed')" class="py-1 rounded-lg badge-wed transition-all ${wedActive}">Miércoles ${mobileDayFilter==='wed'?'•':''}</button><div class="py-1 non-service-day">Jue</div><div class="py-1 non-service-day">Vie</div><div class="py-1 non-service-day">Sáb</div><button onclick="toggleMobileDayFilter('sun')" class="py-1 rounded-lg badge-sun transition-all ${sunActive}">Domingo ${mobileDayFilter==='sun'?'•':''}</button>`;
       }
     }
     function renderCalendarGrid() {
       const grid = document.getElementById('calendarGrid'), weeks = buildWeeksMatrix(), readOnly = isMonthReadOnly() || !asCloud_canEditCalendar();
+      const team = curTeam();
+      if (state.viewMode === 'cal') {
+        grid.className = 'space-y-1';
+        grid.innerHTML = weeks.map(week => `<div class="cal-grid-month">${week.map((cell, monIdx) => {
+          if (!cell) return `<div class="rounded-xl surface-subtle opacity-20 min-h-[68px]"></div>`;
+          const isService = (monIdx === 2 || monIdx === 6 || isCustomServiceDate(cell.iso));
+          const srv = team.services[cell.iso];
+          const assignedNames = isService && srv ? team.tasks.map(tk => team.members.find(m => m.id === srv.assignments?.[tk.id])?.name?.slice(0, 6) || '?') : [];
+          const isSpot = spotlightMemberId && srv && Object.values(srv.assignments || {}).includes(spotlightMemberId);
+          return `<div onclick="openDayFloatingDetail('${cell.iso}', ${monIdx})" class="cursor-pointer rounded-xl p-1.5 min-h-[68px] flex flex-col justify-between border transition-all ${isSpot ? 'member-spotlight-hit' : ''} ${isService ? (cell.dow===0 ? 'badge-sun border-amber-500/40' : 'badge-wed border-indigo-500/40') : 'surface-card border-theme opacity-75 hover:opacity-100'}">
+            <div class="flex items-center justify-between"><span class="mono text-xs font-extrabold">${cell.dayNum}</span>${srv?.note ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>' : ''}</div>
+            <div class="space-y-0.5">${assignedNames.map(n => `<div class="text-[9px] font-bold truncate bg-black/20 rounded px-1">${n}</div>`).join('')}</div>
+          </div>`;
+        }).join('')}</div>`).join('');
+        return;
+      }
       if (state.viewMode === '2col') {
         grid.className = 'space-y-1.5';
         grid.innerHTML = weeks.map(week => {
           const wed = week[2], sun = week[6];
           if (!wed && !sun) return '';
           if (state.hidePast && (!wed || wed.iso < TODAY_ISO) && (!sun || sun.iso < TODAY_ISO)) return '';
-          return `<div class="cal-grid-2">${wed ? renderServiceCell(wed) : '<div class="surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-45 min-h-[90px]">Sin miércoles en esta semana</div>'}${sun ? renderServiceCell(sun) : '<div class="surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-45 min-h-[90px]">Sin domingo en esta semana</div>'}</div>`;
+          return `<div class="cal-grid-2">${wed ? renderServiceCell(wed) : '<div class="cell-wed-item surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-45 min-h-[90px]">Sin miércoles en esta semana</div>'}${sun ? renderServiceCell(sun) : '<div class="cell-sun-item surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-45 min-h-[90px]">Sin domingo en esta semana</div>'}</div>`;
         }).join('');
         return;
       }
@@ -924,6 +1034,22 @@ Gustavo: 4, 11, 25</textarea>
         }).join('')}</div>`;
       }).join('');
     }
+    function openDayFloatingDetail(iso, monIdx) {
+      const weeks = buildWeeksMatrix();
+      let cellObj = null;
+      weeks.forEach(w => w.forEach(c => { if (c && c.iso === iso) cellObj = c; }));
+      if (!cellObj) return;
+      const isService = (monIdx === 2 || monIdx === 6 || isCustomServiceDate(iso));
+      const readOnly = isMonthReadOnly() || !asCloud_canEditCalendar();
+      document.getElementById('dayDetailModalTitle').textContent = `Día ${cellObj.dayNum} (${iso})`;
+      const body = document.getElementById('dayDetailModalBody');
+      if (isService) {
+        body.innerHTML = renderServiceCell(cellObj);
+      } else {
+        body.innerHTML = `<div class="p-4 text-center space-y-3 text-xs"><div class="text-muted-theme">No hay culto programado en este día de semana.</div>${!readOnly ? `<button onclick="activateCustomDayFromCell('${iso}'); closeModal('dayDetailModal');" class="w-full py-2 rounded-xl bg-indigo-600 text-white font-bold">+ Habilitar Nuevo Culto entre Semana</button>` : ''}</div>`;
+      }
+      openModal('dayDetailModal');
+    }
     function renderServiceCell(cell) {
       const team = curTeam(), prefs = state.uiPrefs || DEFAULT_UI_PREFS, srv = team.services[cell.iso] || { assignments: {}, locked: {}, unavail: [], note: '' };
       const readOnly = isMonthReadOnly() || !asCloud_canEditCalendar(), isToday = cell.iso === TODAY_ISO, isPast = cell.iso < TODAY_ISO && !isMonthReadOnly();
@@ -935,7 +1061,7 @@ Gustavo: 4, 11, 25</textarea>
       const taskColsClass = team.tasks.length >= 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2';
       const activeMembersOnly = team.members.filter(m => m.active !== false);
       const dayNamesShort = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-      return `<div class="surface-card rounded-xl ${state.denseMode ? 'p-1.5 gap-1' : 'p-2 gap-1.5'} flex flex-col justify-between border ${borderHighlight} ${isPast ? 'opacity-70' : ''} ${spotlightClass}" style="${!isExtra ? `background-color: ${isSun ? 'var(--sun-tint)' : 'var(--wed-tint)'};` : ''}">
+      return `<div class="${isSun ? 'cell-sun-item' : 'cell-wed-item'} surface-card rounded-xl ${state.denseMode ? 'p-1.5 gap-1' : 'p-2 gap-1.5'} flex flex-col justify-between border ${borderHighlight}${isPast ? 'opacity-70' : ''} ${spotlightClass}" style="${!isExtra ? `background-color: ${isSun ? 'var(--sun-tint)' : 'var(--wed-tint)'};` : ''}">
         <div class="flex flex-col gap-1">
           <div class="flex items-center justify-between gap-1">
             <div class="flex items-center gap-1.5 flex-wrap">
@@ -1514,14 +1640,14 @@ Gustavo: 4, 11, 25</textarea>
         document.getElementById('rescueBannerText').innerHTML = `Falta cubrir <b>${rescueContext.taskLabel}</b> el <b>${dObj ? `${dObj.dow === 0 ? 'Domingo' : 'Miércoles'} ${dObj.dayNum}` : rescueContext.dateISO}</b>.`;
       } else { rescueBanner.classList.add('hidden'); rescueBanner.classList.remove('flex'); }
       const dayShort = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-      document.getElementById('batchTableHead').innerHTML = `<th class="text-left py-2 px-2">Integrante</th><th class="text-left py-2 px-2">Regla del mes</th>${dates.map(d => `<th class="py-1.5 px-1 text-center mono text-[10px] ${rescueContext && rescueContext.dateISO === d.iso ? 'rescue-highlight' : ''} ${d.isNextMonth ? 'text-emerald-600 dark:text-emerald-400' : ''}"><div class="${d.isNextMonth ? 'text-emerald-600 dark:text-emerald-400' : d.dow === 0 ? 'text-amber-700 dark:text-amber-400' : 'text-indigo-700 dark:text-indigo-400'} font-extrabold">${dayShort[d.dow]}</div><div>${d.dayNum}${d.isNextMonth ? '*' : ''}</div></th>`).join('')}`;
+      document.getElementById('batchTableHead').innerHTML = `<th class="text-left py-2 px-2 sticky-avail-col">Integrante</th><th class="text-left py-2 px-2">Regla del mes</th>${dates.map(d => `<th class="py-1.5 px-1 text-center mono text-[10px] ${rescueContext && rescueContext.dateISO === d.iso ? 'rescue-highlight' : ''} ${d.isNextMonth ? 'text-emerald-600 dark:text-emerald-400' : ''}"><div class="${d.isNextMonth ? 'text-emerald-600 dark:text-emerald-400' : d.dow === 0 ? 'text-amber-700 dark:text-amber-400' : 'text-indigo-700 dark:text-indigo-400'} font-extrabold">${dayShort[d.dow]}</div><div>${d.dayNum}${d.isNextMonth ? '*' : ''}</div></th>`).join('')}`;
       document.getElementById('batchTableBody').innerHTML = team.members.filter(m => m.active !== false).map(m => {
         const isMasterFree = m.freeMaster !== false, sunRuleOn = isMasterFree && (m.allowSun !== false), wedRuleOn = isMasterFree && (m.allowWed !== false);
         const dispCol = getDisplayColor(m.color), roleIncompatibleForRescue = rescueContext && getMemberTaskSkill(m, rescueContext.taskKey) <= 0;
         const isMyRow = normalizePersonName(m.name) === normalizePersonName(asCloud_userProfile.memberName);
         const rowLockedForMe = isMonthReadOnly() || (!isAdmin && !isMyRow);
-        return `<tr class="${rowLockedForMe ? 'opacity-40 pointer-events-none' : ''}">
-          <td class="py-2 px-2 font-bold whitespace-nowrap"><div class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${dispCol}"></span><span>${m.name}</span>${isMyRow ? '<span class="text-[9px] px-1 rounded bg-indigo-500/20 text-indigo-400 font-extrabold">Tú</span>' : ''}${isMemberReserve(m) ? '<span class="text-[9px] px-1 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">Reserva</span>' : ''}</div></td>
+        return `<tr class="${rowLockedForMe ? 'opacity-40 pointer-events-none' : ''} hover:bg-indigo-500/5">
+          <td class="py-2 px-2 font-bold whitespace-nowrap sticky-avail-col border-r border-theme"><div class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style="background:${dispCol}"></span><span>${m.name}</span>${isMyRow ? '<span class="text-[9px] px-1 rounded bg-indigo-500/20 text-indigo-400 font-extrabold">Tú</span>' : ''}</div></td>
           <td class="py-2 px-2 whitespace-nowrap"><div class="flex items-center gap-3">
             <label class="switch-label"><input type="checkbox" class="switch-input" ${isMasterFree ? 'checked' : ''} onchange="onSwitchMasterFree('${m.id}', this.checked, true)" /><span class="switch-slider emerald"></span><span class="font-bold text-[11px]">Libre</span></label>
             <label class="switch-label ${!isMasterFree ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${sunRuleOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 0, this.checked, true)" /><span class="switch-slider"></span><span class="font-semibold text-[11px]">Dom</span></label>
@@ -1533,7 +1659,7 @@ Gustavo: 4, 11, 25</textarea>
             const contradictsRule = !blocked && (!isMasterFree || (d.dow === 0 && !sunRuleOn) || (d.dow === 3 && !wedRuleOn));
             if (!isAssignMode) {
               const disableRescueClick = isTargetCol && roleIncompatibleForRescue;
-              return `<td class="p-1 text-center ${isTargetCol ? 'rescue-highlight' : ''}"><button ${disableRescueClick ? 'disabled' : `onpointerdown="startPaintCell(event, '${d.iso}', '${m.id}', ${blocked})" onpointerenter="continuePaintCell(event, '${d.iso}', '${m.id}')" onpointerup="stopPainting()" style="touch-action:none;"`} class="w-8 h-7 rounded-md font-bold text-[10px] ${disableRescueClick ? 'opacity-25 cursor-not-allowed surface-subtle text-muted-theme' : crossBusy ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/50' : blocked ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/35 hover:bg-rose-500/25' : contradictsRule ? 'bg-emerald-500/25 text-emerald-800 dark:text-emerald-200 border-2 border-rose-500 shadow-2xs' : 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40'}">${crossBusy ? 'Otro' : blocked ? 'No' : 'Sí'}</button></td>`;
+              return `<td class="p-1 text-center ${isTargetCol ? 'rescue-highlight' : ''}"><button ${disableRescueClick ? 'disabled' : `onclick="toggleDateAvailability('${d.iso}', '${m.id}', ${blocked}, true)"`} title="${m.name} — ${dayShort[d.dow]}${d.dayNum}" class="w-9 h-7 rounded-md font-bold text-[10px] ${disableRescueClick ? 'opacity-25 cursor-not-allowed surface-subtle text-muted-theme' : crossBusy ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/50' : blocked ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/35 hover:bg-rose-500/25' : contradictsRule ? 'bg-emerald-500/25 text-emerald-800 dark:text-emerald-200 border-2 border-rose-500 shadow-2xs' : 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40'}">${crossBusy ? 'Otro' : blocked ? 'No' : 'Sí'}</button></td>`;
             }
             return `<td class="p-1 text-center ${isTargetCol ? 'rescue-highlight' : ''}"><div class="inline-flex rounded-md overflow-hidden border border-theme">${team.tasks.map((tk, idx) => {
               const isAssignedHere = srv.assignments?.[tk.id] === m.id, restricted = getMemberTaskSkill(m, tk.id) <= 0 || blocked || crossBusy;
@@ -1565,19 +1691,6 @@ Gustavo: 4, 11, 25</textarea>
       getActiveServiceDates().forEach(d => { if (d.dow === targetDow) toggleDateAvailability(d.iso, memberId, isAllowed, false); });
       if (fromBatchModal) renderBatchModal(); else renderTeamModal();
     }
-    function startPaintCell(e, dateISO, memberId, currentlyBlocked) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      if (e && e.button !== undefined && e.button !== 0) return;
-      if (rescueContext && rescueContext.dateISO === dateISO) { toggleDateAvailability(dateISO, memberId, true, true); return; }
-      isMousePainting = true; paintMode = currentlyBlocked;
-      toggleDateAvailability(dateISO, memberId, paintMode, true);
-    }
-    function continuePaintCell(e, dateISO, memberId) {
-      if (!isMousePainting) return;
-      if (e && e.buttons !== undefined && (e.buttons & 1) === 0) { isMousePainting = false; return; }
-      toggleDateAvailability(dateISO, memberId, paintMode, false);
-    }
-    function stopPainting() { isMousePainting = false; }
     function renderTeamModal() {
       const team = curTeam();
       document.getElementById('teamModalTitle').textContent = `Personal y Tareas — ${team.name}`;
@@ -2037,59 +2150,216 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
     }
     const AS_FIREBASE_DB_URL = "https://audiosync-740f3-default-rtdb.firebaseio.com";
     const AS_GITHUB_REPO = "rodrigoarratiap1-ship-it/audiosync-app";
-    const AS_LOCAL_VERSION = "1.1.0";
-    const AS_ADMIN_PIN = "2990";
+    const AS_LOCAL_VERSION = "1.2.0";
+    const AS_DEV_SECRET = "76786471";
     const isDesktopElectron = Boolean(ipcRenderer);
+    if (!state.authSystem) {
+      state.authSystem = {
+        admins: { "yo": { name: "Rodrigo", pass: "2990" } },
+        pendingRequests: []
+      };
+    }
     let asCloud_userProfile = {
       memberId: localStorage.getItem('asCloud_memberId') || 'yo',
       memberName: localStorage.getItem('asCloud_memberName') || 'Rodrigo',
-      isAdmin: localStorage.getItem('asCloud_isAdmin') !== null ? localStorage.getItem('asCloud_isAdmin') === 'true' : isDesktopElectron,
+      isAdmin: localStorage.getItem('asCloud_isAdmin') === 'true',
+      isDev: localStorage.getItem('asCloud_isDev') === 'true',
       notificationsEnabled: localStorage.getItem('asCloud_notify') !== 'false'
     };
     let asCloud_lastRemoteStamp = 0, asCloud_isApplyingRemote = false;
-    function asCloud_canEditCalendar() { return Boolean(asCloud_userProfile.isAdmin); }
+    let profileHoldTimer = null, profileHoldTriggered = false;
+    function asCloud_canEditCalendar() {
+      return Boolean(asCloud_userProfile.isAdmin || asCloud_userProfile.isDev);
+    }
+    function asCloud_startProfileHold(e) {
+      profileHoldTriggered = false;
+      clearTimeout(profileHoldTimer);
+      profileHoldTimer = setTimeout(() => {
+        profileHoldTriggered = true;
+        const myId = asCloud_userProfile.memberId;
+        spotlightMemberId = (spotlightMemberId === myId) ? null : myId;
+        renderAll();
+        showToast(spotlightMemberId ? `Destacando turnos de ${asCloud_userProfile.memberName}` : 'Destacado desactivado');
+      }, 480);
+    }
+    function asCloud_endProfileHold(e) {
+      clearTimeout(profileHoldTimer);
+      if (!profileHoldTriggered) asCloud_openIdentityModal();
+    }
+    function asCloud_cancelProfileHold() { clearTimeout(profileHoldTimer); }
     function asCloud_applyRolePermissionsUI() {
+      const isDev = Boolean(asCloud_userProfile.isDev);
       const isAdmin = asCloud_canEditCalendar();
-      const nameEl = document.getElementById('asCloud_currentUserName'); if (nameEl) nameEl.textContent = asCloud_userProfile.memberName || 'Elegir Perfil';
-      const mobNavUser = document.getElementById('asCloud_mobileNavUser'); if (mobNavUser) mobNavUser.textContent = asCloud_userProfile.memberName || 'Perfil';
-      const roleTag = document.getElementById('asCloud_currentRoleTag'), statusLbl = document.getElementById('asCloud_adminStatusLabel'), btnPub = document.getElementById('asCloud_btnPublish');
-      if (isAdmin) {
-        if (roleTag) { roleTag.textContent = 'Jefe Equipo'; roleTag.className = 'text-[9px] mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold'; }
-        if (statusLbl) { statusLbl.textContent = 'Activo (Edición Total)'; statusLbl.className = 'text-[10px] mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold'; }
+      const nameEl = document.getElementById('asCloud_currentUserName');
+      if (nameEl) nameEl.textContent = asCloud_userProfile.memberName || 'Elegir Perfil';
+      const roleTag = document.getElementById('asCloud_currentRoleTag');
+      const statusLbl = document.getElementById('asCloud_adminStatusLabel');
+      const btnPub = document.getElementById('asCloud_btnPublish');
+      const btnLogout = document.getElementById('asCloud_btnLogoutAdmin');
+      if (isDev) {
+        const pendingCount = (state.authSystem?.pendingRequests || []).length;
+        if (roleTag) { roleTag.textContent = pendingCount > 0 ? `DEV (${pendingCount} solic.)` : 'DEV'; roleTag.className = 'text-[9px] mono px-1.5 py-0.5 rounded bg-rose-500/25 text-rose-300 font-extrabold'; }
+        if (statusLbl) { statusLbl.textContent = 'Modo DEV Maestro'; statusLbl.className = 'text-[10px] mono px-1.5 py-0.5 rounded bg-rose-500/25 text-rose-300 font-bold'; }
         if (btnPub) { btnPub.classList.remove('hidden'); btnPub.classList.add('flex'); }
+        if (btnLogout) btnLogout.classList.remove('hidden');
+      } else if (isAdmin) {
+        if (roleTag) { roleTag.textContent = 'Líder'; roleTag.className = 'text-[9px] mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold'; }
+        if (statusLbl) { statusLbl.textContent = 'Sesión Líder Activa'; statusLbl.className = 'text-[10px] mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold'; }
+        if (btnPub) { btnPub.classList.remove('hidden'); btnPub.classList.add('flex'); }
+        if (btnLogout) btnLogout.classList.remove('hidden');
       } else {
         if (roleTag) { roleTag.textContent = 'Integrante'; roleTag.className = 'text-[9px] mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400'; }
         if (statusLbl) { statusLbl.textContent = 'Modo Integrante'; statusLbl.className = 'text-[10px] mono px-1.5 py-0.5 rounded surface-card'; }
         if (btnPub) { btnPub.classList.add('hidden'); btnPub.classList.remove('flex'); }
+        if (btnLogout) btnLogout.classList.add('hidden');
       }
+      asCloud_renderDevPanel();
+    }
+    function asCloud_getAllUniqueMembersAcrossTeams() {
+      const seen = new Set();
+      const list = [];
+      Object.values(state.teams).forEach(t => {
+        (t.members || []).filter(m => m.active !== false).forEach(m => {
+          const norm = normalizePersonName(m.name);
+          if (!seen.has(norm)) {
+            seen.add(norm);
+            list.push({ id: m.id, name: m.name, color: m.color, teamName: t.name });
+          }
+        });
+      });
+      return list;
     }
     function asCloud_openIdentityModal() {
-      document.getElementById('asCloud_membersSelectGrid').innerHTML = curTeam().members.filter(m => m.active !== false).map(m => {
+      if (!state.authSystem) state.authSystem = { admins: { "yo": { name: "Rodrigo", pass: "2990" } }, pendingRequests: [] };
+      const allMembers = asCloud_getAllUniqueMembersAcrossTeams();
+      const adminsMap = state.authSystem.admins || {};
+      document.getElementById('asCloud_membersSelectGrid').innerHTML = allMembers.map(m => {
         const isMe = normalizePersonName(m.name) === normalizePersonName(asCloud_userProfile.memberName);
-        return `<button onclick="asCloud_selectMyIdentity('${m.id}', '${m.name}')" class="p-2 rounded-xl border text-left font-bold flex items-center justify-between ${isMe ? 'border-indigo-500 bg-indigo-500/15' : 'border-theme surface-subtle hover:border-indigo-500/50'}"><span class="flex items-center gap-1.5 truncate"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${m.color}"></span><span class="truncate">${m.name}</span></span>${isMe ? '<i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400 shrink-0"></i>' : ''}</button>`;
+        const isAdm = Boolean(adminsMap[m.id]);
+        return `<button onclick="asCloud_selectMyIdentity('${m.id}', '${m.name}')" class="p-2 rounded-xl border text-left font-bold flex items-center justify-between ${isMe ? 'border-indigo-500 bg-indigo-500/15' : 'border-theme surface-subtle hover:border-indigo-500/50'}"><span class="flex items-center gap-1.5 truncate"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${m.color}"></span><span class="truncate">${m.name}</span>${isAdm ? '<span class="text-[8px] px-1 rounded bg-emerald-500/20 text-emerald-400">Líder</span>' : ''}</span>${isMe ? '<i data-lucide="check" class="w-3.5 h-3.5 text-indigo-400 shrink-0"></i>' : ''}</button>`;
       }).join('');
+      const adminSelect = document.getElementById('asCloud_adminUserSelect');
+      if (adminSelect) {
+        adminSelect.innerHTML = Object.entries(adminsMap).map(([id, obj]) => `<option value="${id}">${obj.name}</option>`).join('');
+      }
+      const reqSelect = document.getElementById('asCloud_reqAdminMemberSelect');
+      if (reqSelect) {
+        reqSelect.innerHTML = allMembers.map(m => `<option value="${m.id}" data-name="${m.name}">${m.name}</option>`).join('');
+      }
       document.getElementById('asCloud_chkNotifyMe').checked = asCloud_userProfile.notificationsEnabled;
       openModal('asCloud_identityModal');
     }
     function asCloud_selectMyIdentity(memberId, memberName) {
-      asCloud_userProfile.memberId = memberId; asCloud_userProfile.memberName = memberName;
-      localStorage.setItem('asCloud_memberId', memberId); localStorage.setItem('asCloud_memberName', memberName);
-      spotlightMemberId = memberId; renderAll(); asCloud_openIdentityModal(); showToast(`Perfil activo: ${memberName}`);
+      asCloud_userProfile.memberId = memberId;
+      asCloud_userProfile.memberName = memberName;
+      localStorage.setItem('asCloud_memberId', memberId);
+      localStorage.setItem('asCloud_memberName', memberName);
+      renderAll();
+      asCloud_openIdentityModal();
+      showToast(`Hola, ${memberName}`);
     }
     function asCloud_toggleMyNotifications(enabled) {
-      asCloud_userProfile.notificationsEnabled = enabled; localStorage.setItem('asCloud_notify', enabled ? 'true' : 'false');
+      asCloud_userProfile.notificationsEnabled = enabled;
+      localStorage.setItem('asCloud_notify', enabled ? 'true' : 'false');
       if (enabled && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
     }
     function asCloud_verifyAdminPin() {
-      const input = document.getElementById('asCloud_pinInput'), val = input.value.trim();
-      if (asCloud_userProfile.isAdmin && !val) {
-        asCloud_userProfile.isAdmin = false; localStorage.setItem('asCloud_isAdmin', 'false');
-        renderAll(); showToast('Cambiado a Modo Integrante (Solo lectura)'); return;
+      const selId = document.getElementById('asCloud_adminUserSelect')?.value;
+      const pass = document.getElementById('asCloud_pinInput')?.value.trim();
+      const admObj = state.authSystem?.admins?.[selId];
+      if (admObj && admObj.pass === pass) {
+        asCloud_userProfile.memberId = selId;
+        asCloud_userProfile.memberName = admObj.name;
+        asCloud_userProfile.isAdmin = true;
+        localStorage.setItem('asCloud_memberId', selId);
+        localStorage.setItem('asCloud_memberName', admObj.name);
+        localStorage.setItem('asCloud_isAdmin', 'true');
+        document.getElementById('asCloud_pinInput').value = '';
+        renderAll();
+        closeModal('asCloud_identityModal');
+        showToast(`Sesión iniciada como Admin: ${admObj.name}`);
+      } else {
+        showToast('Clave de Administrador incorrecta', true);
       }
-      if (val === AS_ADMIN_PIN) {
-        asCloud_userProfile.isAdmin = true; localStorage.setItem('asCloud_isAdmin', 'true');
-        input.value = ''; renderAll(); closeModal('asCloud_identityModal'); showToast('Modo Jefe de Equipo activado');
-      } else showToast('PIN incorrecto', true);
+    }
+    function asCloud_logoutAdmin() {
+      asCloud_userProfile.isAdmin = false;
+      asCloud_userProfile.isDev = false;
+      localStorage.setItem('asCloud_isAdmin', 'false');
+      localStorage.setItem('asCloud_isDev', 'false');
+      renderAll();
+      showToast('Sesión cerrada (Modo Integrante)');
+    }
+    function asCloud_requestAdminAccount() {
+      const sel = document.getElementById('asCloud_reqAdminMemberSelect');
+      const pass = document.getElementById('asCloud_reqAdminPass')?.value.trim();
+      if (!sel || !pass) { showToast('Elige tu nombre y define una clave', true); return; }
+      const memberId = sel.value;
+      const memberName = sel.options[sel.selectedIndex].getAttribute('data-name') || sel.options[sel.selectedIndex].text;
+      if (!state.authSystem) state.authSystem = { admins: { "yo": { name: "Rodrigo", pass: "2990" } }, pendingRequests: [] };
+      state.authSystem.pendingRequests = (state.authSystem.pendingRequests || []).filter(r => r.memberId !== memberId);
+      state.authSystem.pendingRequests.push({ memberId, memberName, pass, requestedAt: Date.now() });
+      document.getElementById('asCloud_reqAdminPass').value = '';
+      saveState();
+      showToast(`Solicitud de Admin enviada al Desarrollador`);
+    }
+    function asCloud_verifyDevKey() {
+      const input = document.getElementById('asCloud_devKeyInput');
+      const val = input.value.trim();
+      if (asCloud_userProfile.isDev && !val) {
+        asCloud_userProfile.isDev = false;
+        localStorage.setItem('asCloud_isDev', 'false');
+        renderAll();
+        showToast('Modo Dev desactivado');
+        return;
+      }
+      if (val === AS_DEV_SECRET) {
+        asCloud_userProfile.isDev = true;
+        asCloud_userProfile.isAdmin = true;
+        localStorage.setItem('asCloud_isDev', 'true');
+        localStorage.setItem('asCloud_isAdmin', 'true');
+        input.value = '';
+        renderAll();
+        showToast('Modo Desarrollador (DEV) Activado');
+      } else {
+        showToast('Clave Dev incorrecta', true);
+      }
+    }
+    function asCloud_renderDevPanel() {
+      const panel = document.getElementById('asCloud_devControlPanel');
+      if (!panel) return;
+      if (!asCloud_userProfile.isDev) { panel.classList.add('hidden'); return; }
+      panel.classList.remove('hidden');
+      const reqList = document.getElementById('asCloud_devRequestsList');
+      const admList = document.getElementById('asCloud_devActiveAdminsList');
+      const reqs = state.authSystem?.pendingRequests || [];
+      const admins = state.authSystem?.admins || {};
+      reqList.innerHTML = reqs.length === 0
+        ? '<div class="text-[11px] text-muted-theme italic">No hay solicitudes pendientes.</div>'
+        : reqs.map(r => `<div class="flex items-center justify-between p-2 rounded-lg surface-card border border-amber-500/40"><div><span class="font-bold">${r.memberName}</span> <span class="text-[10px] mono text-muted-theme">(Clave: ${r.pass})</span></div><div class="flex gap-1.5"><button onclick="asCloud_devResolveRequest('${r.memberId}', true)" class="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-[10px]">Aceptar</button><button onclick="asCloud_devResolveRequest('${r.memberId}', false)" class="px-2 py-0.5 rounded bg-rose-600 text-white font-bold text-[10px]">Rechazar</button></div></div>`).join('');
+      admList.innerHTML = Object.entries(admins).map(([id, a]) => `<div class="flex items-center justify-between p-1.5 rounded-lg surface-card border border-theme"><span><b>${a.name}</b> <span class="mono text-[10px] text-muted-theme">(Clave: ${a.pass})</span></span>${id !== 'yo' ? `<button onclick="asCloud_devRevokeAdmin('${id}')" class="text-rose-400 text-[10px] underline">Revocar</button>` : '<span class="text-[9px] text-emerald-400 font-bold">Principal</span>'}</div>`).join('');
+    }
+    function asCloud_devResolveRequest(memberId, approve) {
+      if (!asCloud_userProfile.isDev || !state.authSystem) return;
+      const req = (state.authSystem.pendingRequests || []).find(r => r.memberId === memberId);
+      if (!req) return;
+      if (approve) {
+        if (!state.authSystem.admins) state.authSystem.admins = {};
+        state.authSystem.admins[req.memberId] = { name: req.memberName, pass: req.pass };
+        showToast(`Cuenta de Admin aprobada para ${req.memberName}`);
+      } else {
+        showToast(`Solicitud de ${req.memberName} rechazada`, true);
+      }
+      state.authSystem.pendingRequests = state.authSystem.pendingRequests.filter(r => r.memberId !== memberId);
+      saveState();
+      renderAll();
+    }
+    function asCloud_devRevokeAdmin(memberId) {
+      if (!asCloud_userProfile.isDev || !state.authSystem?.admins) return;
+      delete state.authSystem.admins[memberId];
+      saveState();
+      renderAll();
+      showToast('Permiso de Admin revocado');
     }
     async function asCloud_pushStateToFirebase(customAnnouncement = null) {
       if (asCloud_isApplyingRemote) return;
@@ -2097,7 +2367,7 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
         const stamp = Date.now(); asCloud_lastRemoteStamp = stamp;
         await fetch(`${AS_FIREBASE_DB_URL}/audiosync_live.json`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ updatedAt: stamp, updatedBy: asCloud_userProfile.memberName || 'Admin', announcement: customAnnouncement, appState: { uiTheme: state.uiTheme, uiPrefs: state.uiPrefs, exportConfig: state.exportConfig, teams: state.teams } })
+          body: JSON.stringify({ updatedAt: stamp, updatedBy: asCloud_userProfile.memberName || 'Admin', announcement: customAnnouncement, appState: { uiTheme: state.uiTheme, uiPrefs: state.uiPrefs, exportConfig: state.exportConfig, authSystem: state.authSystem, teams: state.teams } })
         });
         const dot = document.getElementById('asCloud_syncDot'); if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
       } catch (err) {
@@ -2118,6 +2388,7 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
           state.teams = data.appState.teams;
           if (data.appState.exportConfig) state.exportConfig = { ...DEFAULT_EXPORT_CONFIG, ...data.appState.exportConfig };
           if (data.appState.uiPrefs) state.uiPrefs = { ...DEFAULT_UI_PREFS, ...data.appState.uiPrefs };
+          if (data.appState.authSystem) state.authSystem = data.appState.authSystem;
           normalizeTeamMembersStructure(); renderAll(); asCloud_isApplyingRemote = false;
           if (!isFirstLoad && (oldTeamsJSON !== JSON.stringify(state.teams) || data.announcement)) asCloud_checkAndNotifyMyShifts(data.announcement);
         }
@@ -2146,14 +2417,23 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
       if (ipcRenderer) ipcRenderer.invoke('db-save', state).catch(() => {});
       asCloud_pushStateToFirebase();
     }
-    async function asCloud_checkForGitHubUpdates() {
+    async function asCloud_checkForGitHubUpdates(manualCheck = false) {
       try {
+        const stEl = document.getElementById('asCloud_settingsUpdateStatus');
+        const btnUpd = document.getElementById('asCloud_btnSettingsUpdateNow');
+        if (stEl) stEl.textContent = `Versión instalada: v${AS_LOCAL_VERSION} · Buscando...`;
         const resp = await fetch(`https://raw.githubusercontent.com/${AS_GITHUB_REPO}/main/version.json?t=${Date.now()}`);
         if (!resp.ok) return;
         const remote = await resp.json();
         if (remote && remote.version && remote.version !== AS_LOCAL_VERSION) {
           document.getElementById('asCloud_updateText').textContent = `Nueva versión v${remote.version} disponible — ${remote.notes || 'Mejoras listas'}`;
           document.getElementById('asCloud_updateBanner').classList.remove('hidden');
+          if (stEl) stEl.innerHTML = `<span class="text-emerald-400 font-bold">¡Nueva v${remote.version} disponible! (${remote.notes || ''})</span>`;
+          if (btnUpd) btnUpd.classList.remove('hidden');
+        } else {
+          if (stEl) stEl.textContent = `Estás al día (v${AS_LOCAL_VERSION})`;
+          if (btnUpd) btnUpd.classList.add('hidden');
+          if (manualCheck) showToast(`Ya tienes la última versión (v${AS_LOCAL_VERSION})`);
         }
       } catch (e) {}
     }
