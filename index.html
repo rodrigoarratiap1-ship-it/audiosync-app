@@ -2,24 +2,24 @@
 <html lang="es" class="dark" data-ui-theme="dark_neutral">
 <head>
   <script>
-  // Loader v1.3.6 - CORS FIX - limpia cache roto
+  // Loader v1.3.8 - Inyección segura de caché y disparo automático de initApp
   (function(){
     try{
       if(window.__CACHED_APPLIED) return;
       var useCached = localStorage.getItem('audiosync_use_cached');
       var cached = localStorage.getItem('audiosync_cached_html');
       if(cached && (cached.indexOf('##### APP:')>-1 || cached.indexOf('FIN DE index.html')>-1 || cached.length<5000)){
-        console.log('Cache roto, limpiando');
         localStorage.removeItem('audiosync_use_cached');
         localStorage.removeItem('audiosync_cached_html');
         return;
       }
       if(useCached==='1' && cached && cached.length>10000){
-        console.log('[AudioSync] Aplicando cache v'+(localStorage.getItem('audiosync_cached_version')||'?'));
         window.__CACHED_APPLIED = true;
-        document.open();
-        document.write(cached);
-        document.close();
+        window.addEventListener('DOMContentLoaded', function(){
+          document.open();
+          document.write(cached);
+          document.close();
+        }, { once: true });
         return;
       }
     }catch(e){ console.log('loader err', e); }
@@ -29,7 +29,7 @@
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>AudioSync 1.3.7 GREEN TEST 1.3 — Planificador de Equipos</title>
+  <title>AudioSync 1.3.9 NARANJO</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -132,10 +132,13 @@
     ::-webkit-scrollbar-thumb { background: var(--border-col); border-radius: 9999px; }
   
     
-    /* v1.3.7 VERDE */
-    html[data-ui-theme="dark_neutral"] { --bg-main: #86EFAC !important; --bg-card: #BBF7D0 !important; --bg-subtle: #4ADE80 !important; --text-main: #052E16 !important; }
-    body { background-color: #86EFAC !important; }
+    
 
+
+    
+    /* v1.3.9 NARANJO */
+    html[data-ui-theme="dark_neutral"] { --bg-main: #FB923C !important; --bg-card: #FED7AA !important; --bg-subtle: #FDBA74 !important; --text-main: #7C2D12 !important; --border-col: #EA580C !important; }
+    body { background-color: #FB923C !important; }
 
     </style>
 </head>
@@ -2156,7 +2159,7 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
     }
     const AS_FIREBASE_DB_URL = "https://audiosync-740f3-default-rtdb.firebaseio.com";
     const AS_GITHUB_REPO = "rodrigoarratiap1-ship-it/audiosync-app";
-    const AS_LOCAL_VERSION = "1.3.7";
+    const AS_LOCAL_VERSION = "1.3.9";
     function getInstalledVersion(){ try{ return localStorage.getItem("audiosync_current_version") || localStorage.getItem("audiosync_cached_version") || AS_LOCAL_VERSION; }catch(e){ return AS_LOCAL_VERSION; } }
     const AS_DEV_SECRET = "76786471";
     const isDesktopElectron = Boolean(ipcRenderer);
@@ -2426,125 +2429,126 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
     }
     async function asCloud_checkForGitHubUpdates(manualCheck = false) {
       try {
-        var stEl=document.getElementById('asCloud_settingsUpdateStatus');
-        var btnUpd=document.getElementById('asCloud_btnSettingsUpdateNow');
-        var banner=document.getElementById('asCloud_updateBanner');
-        var textEl=document.getElementById('asCloud_updateText');
-        var installed=(typeof getInstalledVersion==='function'?getInstalledVersion():AS_LOCAL_VERSION);
-        if(stEl) stEl.textContent="Version instalada: v"+installed+" - Buscando...";
-        var remote=null;
-        var urls=[
-          "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@Principal/version.json?t="+Date.now(),
-          "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@main/version.json?t="+Date.now(),
-          "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/version.json?t="+Date.now(),
-          "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/Principal/version.json?t="+Date.now(),
-          "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/main/version.json?t="+Date.now()
+        var stEl = document.getElementById('asCloud_settingsUpdateStatus');
+        var btnUpd = document.getElementById('asCloud_btnSettingsUpdateNow');
+        var banner = document.getElementById('asCloud_updateBanner');
+        var textEl = document.getElementById('asCloud_updateText');
+        var installed = (typeof getInstalledVersion === 'function' ? getInstalledVersion() : AS_LOCAL_VERSION);
+        if (stEl) stEl.textContent = "Versión instalada: v" + installed + " · Buscando...";
+        var remote = null;
+        var urls = [
+          "https://raw.githubusercontent.com/" + AS_GITHUB_REPO + "/main/version.json?t=" + Date.now(),
+          "https://raw.githubusercontent.com/" + AS_GITHUB_REPO + "/Principal/version.json?t=" + Date.now(),
+          "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/version.json?t=" + Date.now()
         ];
-        for(var u of urls){
-          try{
-            var resp=await fetch(u,{cache:'no-store'});
-            if(resp.ok){ 
-              var txt=await resp.text();
-              try{ remote=JSON.parse(txt); if(remote && remote.version) break; }catch(e){}
+        for (var u of urls) {
+          try {
+            var resp = await fetch(u, { cache: 'no-store' });
+            if (resp.ok) {
+              var txt = await resp.text();
+              try { remote = JSON.parse(txt); if (remote && remote.version) break; } catch (e) {}
             }
-          }catch(e){ console.log('check fail '+u, e); }
+          } catch (e) {}
         }
-        if(!remote){ 
-          if(stEl) stEl.textContent="No se pudo verificar (v"+installed+")"; 
-          if(manualCheck && typeof showToast==='function') showToast('No se pudo verificar version (CORS?)', true);
-          return; 
-        }
-        if(remote.version===installed){
-          if(banner) banner.classList.add('hidden');
-          if(btnUpd) btnUpd.classList.add('hidden');
-          if(stEl) stEl.textContent="Estas al dia (v"+installed+")";
-          if(manualCheck && typeof showToast==='function') showToast("Ya tienes la ultima version (v"+installed+")");
+        if (!remote) {
+          if (stEl) stEl.textContent = "Versión instalada: v" + installed;
+          if (manualCheck) showToast('No se pudo conectar con GitHub', true);
           return;
         }
-        if(remote && remote.version && remote.version!==installed){
-          if(textEl) textEl.textContent="Nueva version v"+remote.version+" disponible - "+(remote.notes||'Mejoras');
-          if(banner) banner.classList.remove('hidden');
-          if(stEl) stEl.innerHTML="<span class=\"text-emerald-400 font-bold\">Nueva v"+remote.version+" disponible! (instalada v"+installed+")</span>";
-          if(btnUpd) btnUpd.classList.remove('hidden');
+        if (remote.version === installed) {
+          if (banner) banner.classList.add('hidden');
+          if (btnUpd) btnUpd.classList.add('hidden');
+          if (stEl) stEl.textContent = "Estás al día (v" + installed + ")";
+          if (manualCheck) showToast("Ya tienes la última versión (v" + installed + ")");
+          return;
         }
-      } catch(e){ console.log('check err', e); }
+        if (remote.version !== installed) {
+          if (textEl) textEl.textContent = "Nueva versión v" + remote.version + " disponible — " + (remote.notes || 'Mejoras');
+          if (banner) banner.classList.remove('hidden');
+          if (stEl) stEl.innerHTML = "<span class=\"text-emerald-400 font-bold\">¡Nueva v" + remote.version + " disponible! (instalada v" + installed + ")</span>";
+          if (btnUpd) btnUpd.classList.remove('hidden');
+        }
+      } catch (e) {}
     }
 
-
-async function asCloud_applyUpdateNow() {
-      var stEl=document.getElementById('asCloud_settingsUpdateStatus');
-      if(stEl) stEl.textContent="Descargando actualizacion...";
-      if(typeof showToast==='function') showToast('Descargando actualizacion...');
-      var remoteVersion=null;
-      var newHtml=null;
-      // URLs con CORS permitido primero (jsDelivr y Pages)
-      var versionUrls=[
-        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@Principal/version.json?t="+Date.now(),
-        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@main/version.json?t="+Date.now(),
-        "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/version.json?t="+Date.now()
+    async function asCloud_applyUpdateNow() {
+      var stEl = document.getElementById('asCloud_settingsUpdateStatus');
+      if (stEl) stEl.textContent = "Descargando actualización...";
+      showToast('Descargando actualización desde GitHub...');
+      var remoteVersion = null;
+      var newHtml = null;
+      var workingHtmlUrl = null;
+      var versionUrls = [
+        "https://raw.githubusercontent.com/" + AS_GITHUB_REPO + "/main/version.json?t=" + Date.now(),
+        "https://raw.githubusercontent.com/" + AS_GITHUB_REPO + "/Principal/version.json?t=" + Date.now(),
+        "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/version.json?t=" + Date.now()
       ];
-      var htmlUrls=[
-        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@Principal/index.html?t="+Date.now(),
-        "https://cdn.jsdelivr.net/gh/"+AS_GITHUB_REPO+"@main/index.html?t="+Date.now(),
-        "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/index.html?t="+Date.now(),
-        "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/Principal/index.html?t="+Date.now(),
-        "https://raw.githubusercontent.com/"+AS_GITHUB_REPO+"/main/index.html?t="+Date.now()
+      var htmlUrls = [
+        "https://raw.githubusercontent.com/" + AS_GITHUB_REPO + "/main/index.html?t=" + Date.now(),
+        "https://raw.githubusercontent.com/" + AS_GITHUB_REPO + "/Principal/index.html?t=" + Date.now(),
+        "https://rodrigoarratiap1-ship-it.github.io/audiosync-app/index.html?t=" + Date.now()
       ];
-      // 1. Obtener version remota
-      for(var i=0;i<versionUrls.length;i++){
-        try{
-          var vr=await fetch(versionUrls[i],{cache:'no-store'});
-          if(vr.ok){
-            var txt=await vr.text();
-            var vj=JSON.parse(txt);
-            if(vj && vj.version){ remoteVersion=vj.version; console.log('Remote version '+remoteVersion+' from '+versionUrls[i]); break; }
+      for (var i = 0; i < versionUrls.length; i++) {
+        try {
+          var vr = await fetch(versionUrls[i], { cache: 'no-store' });
+          if (vr.ok) {
+            var vj = JSON.parse(await vr.text());
+            if (vj && vj.version) { remoteVersion = vj.version; break; }
           }
-        }catch(e){ console.log('version fetch fail '+versionUrls[i], e); }
+        } catch (e) {}
       }
-      // 2. Obtener html
-      for(var j=0;j<htmlUrls.length;j++){
-        try{
-          var resp=await fetch(htmlUrls[j],{cache:'no-store'});
-          if(!resp.ok) continue;
-          var txt=await resp.text();
-          if(txt.length>10000 && txt.indexOf('<!DOCTYPE html>')>-1 && txt.indexOf('AudioSync')>-1){
-            // Limpia si viene concatenado
-            var s=txt.indexOf('<!DOCTYPE html>');
-            var e=txt.lastIndexOf('</html>');
-            if(s>-1 && e>-1){ txt=txt.substring(s, e+7); }
-            if(remoteVersion){ txt=txt.replace(/AS_LOCAL_VERSION\s*=\s*["'][^"']*["']/, 'AS_LOCAL_VERSION = "'+remoteVersion+'"'); }
-            newHtml=txt; 
-            console.log('HTML obtenido de '+htmlUrls[j]+' len '+txt.length);
+      for (var j = 0; j < htmlUrls.length; j++) {
+        try {
+          var resp = await fetch(htmlUrls[j], { cache: 'no-store' });
+          if (!resp.ok) continue;
+          var txt = await resp.text();
+          if (txt.length > 10000 && txt.indexOf('<!DOCTYPE html>') > -1 && txt.indexOf('AudioSync') > -1) {
+            var s = txt.indexOf('<!DOCTYPE html>');
+            var e = txt.lastIndexOf('</html>');
+            if (s > -1 && e > -1) txt = txt.substring(s, e + 7);
+            if (remoteVersion) {
+              txt = txt.replace(/const\s+AS_LOCAL_VERSION\s*=\s*["'][^"']*["']/, 'const AS_LOCAL_VERSION = "1.3.9" + remoteVersion + '"');
+            }
+            newHtml = txt;
+            workingHtmlUrl = htmlUrls[j];
             break;
           }
-        }catch(e){ console.log('html fetch fail '+htmlUrls[j], e); }
+        } catch (e) {}
       }
-      if(!newHtml){ 
-        if(stEl) stEl.textContent="Error al descargar (CORS). Prueba mas tarde";
-        if(typeof showToast==='function') showToast('Error CORS al descargar. Revisa GitHub Pages activo', true);
+      if (!newHtml) {
+        if (stEl) stEl.textContent = "Error al descargar de GitHub";
+        showToast('No se pudo descargar el index.html desde GitHub', true);
         return;
       }
-      try{
+      try {
         localStorage.setItem('audiosync_cached_html', newHtml);
-        localStorage.setItem('audiosync_use_cached','1');
+        localStorage.setItem('audiosync_use_cached', '1');
         localStorage.setItem('audiosync_cached_at', Date.now().toString());
-        if(remoteVersion){
+        if (remoteVersion) {
           localStorage.setItem('audiosync_cached_version', remoteVersion);
           localStorage.setItem('audiosync_current_version', remoteVersion);
         }
-        if(stEl) stEl.textContent="Descargado v"+(remoteVersion||'')+" - Reiniciando...";
-        var banner=document.getElementById('asCloud_updateBanner');
-        if(banner) banner.classList.add('hidden');
-        if(typeof showToast==='function') showToast('Actualizado a v'+(remoteVersion||'')+'! Reiniciando...');
-        setTimeout(function(){ location.reload(); }, 1000);
-      }catch(e){ 
-        console.log('save fail', e);
-        if(stEl) stEl.textContent="Error al guardar: "+e.message;
+        if (ipcRenderer && workingHtmlUrl) {
+          await ipcRenderer.invoke('apply-github-update', { rawHtmlUrl: workingHtmlUrl });
+          return;
+        }
+        showToast('¡Actualizado a v' + (remoteVersion || '') + '! Aplicando...');
+        setTimeout(function() {
+          window.__CACHED_APPLIED = true;
+          document.open();
+          document.write(newHtml);
+          document.close();
+        }, 500);
+      } catch (e) {
+        if (stEl) stEl.textContent = "Error al guardar: " + e.message;
       }
     }
 
     async function initApp() {
-      try{ if(!localStorage.getItem('audiosync_current_version')) localStorage.setItem('audiosync_current_version', (typeof getInstalledVersion==='function'?getInstalledVersion():AS_LOCAL_VERSION)); }catch(e){}
+      try {
+        var ver = (typeof getInstalledVersion === 'function' ? getInstalledVersion() : AS_LOCAL_VERSION);
+        localStorage.setItem('audiosync_current_version', ver);
+      } catch (e) {}
 
       let loaded = null;
       if (ipcRenderer) { try { loaded = await ipcRenderer.invoke('db-load'); } catch (e) {} }
@@ -2573,7 +2577,11 @@ async function asCloud_applyUpdateNow() {
       document.addEventListener('mouseleave', () => { isMousePainting = false; });
       window.addEventListener('scroll', () => closeGlobalDropdown(), true);
     }
-    window.addEventListener('DOMContentLoaded', initApp);
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
   </script>
 </body>
 </html>
