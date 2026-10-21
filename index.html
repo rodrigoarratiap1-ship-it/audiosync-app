@@ -434,11 +434,6 @@ Gustavo: 4, 11, 25</textarea>
             </div>
           </div>
         </details>
-
-        <!-- Versión de aplicación abajo del todo en pequeño -->
-        <div class="text-center pt-2 pb-1">
-          <span class="text-[10px] mono text-muted-theme opacity-75">Versión de aplicación : v1.2.0</span>
-        </div>
       </div>
     </div>
   </div>
@@ -2420,9 +2415,8 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
         }
       } catch (e) {}
     }
-    async function asCloud_applyUpdateNow() {
+async function asCloud_applyUpdateNow() {
       const rawHtmlUrl = `https://raw.githubusercontent.com/${AS_GITHUB_REPO}/main/index.html?t=${Date.now()}`;
-      const pagesUrl = `https://rodrigoarratiap1-ship-it.github.io/audiosync-app/?v=${Date.now()}`;
       showToast('Descargando actualización desde GitHub...');
       if (ipcRenderer) {
         const res = await ipcRenderer.invoke('apply-github-update', { rawHtmlUrl });
@@ -2433,25 +2427,23 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
           if (!resp.ok) throw new Error('HTTP '+resp.status);
           const newHtml = await resp.text();
           if (newHtml.length < 1000 || !newHtml.includes('AudioSync')) throw new Error('HTML invalido');
-          // Intenta guardar en Capacitor Filesystem si existe
-          try {
-            if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Filesystem) {
-              const { Filesystem, Directory } = Capacitor.Plugins;
-              await Filesystem.writeFile({ path: 'audiosync_latest.html', data: newHtml, directory: Directory.Data, encoding: 'utf8' });
-            }
-          } catch(e) {}
+          
+          // Guardamos en la memoria y forzamos bandera de uso
           localStorage.setItem('audiosync_cached_html', newHtml);
           localStorage.setItem('audiosync_use_cached', '1');
-          localStorage.setItem('audiosync_cached_at', Date.now().toString());
-          showToast('¡Actualizado a v1.1! Recargando...');
-          setTimeout(()=>{ location.reload(); }, 900);
+          
+          showToast('¡Actualización descargada! Reiniciando...');
+          
+          // Forzamos la recarga completa limpiando la sesión visual
+          setTimeout(()=>{ 
+            window.location.href = window.location.href.split('#')[0] + '?update=' + Date.now();
+            window.location.reload(true);
+          }, 1000);
         } catch(e) {
-          console.log('Fallo cache, yendo a Pages', e);
-          window.location.href = pagesUrl;
+          showToast('Error al conectar con GitHub', true);
         }
       }
-    }
-    async function initApp() {
+    }    async function initApp() {
       let loaded = null;
       if (ipcRenderer) { try { loaded = await ipcRenderer.invoke('db-load'); } catch (e) {} }
       if (!loaded) { const saved = localStorage.getItem('audiosync_v12_state'); if (saved) { try { loaded = JSON.parse(saved); } catch (e) {} } }
