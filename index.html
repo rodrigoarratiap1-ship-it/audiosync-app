@@ -2,24 +2,25 @@
 <html lang="es" class="dark" data-ui-theme="dark_neutral">
 <head>
   <script>
-  // Loader v1.3.9 - Inyección segura de caché y disparo automático de initApp
+  // Loader v1.4.0 - Síncrono para Android y transparente para Electron PC
   (function(){
     try{
-      if(window.__CACHED_APPLIED) return;
+      var isElectron = false;
+      try { isElectron = Boolean(typeof require === 'function' && require('electron')); } catch(e){}
+      if (isElectron) return; // En PC Electron ya carga audiosync_latest_ui.html desde disco
+      if (window.__CACHED_APPLIED) return;
       var useCached = localStorage.getItem('audiosync_use_cached');
       var cached = localStorage.getItem('audiosync_cached_html');
-      if(cached && (cached.indexOf('##### APP:')>-1 || cached.indexOf('FIN DE index.html')>-1 || cached.length<5000)){
+      if (cached && (cached.indexOf('##### APP:') > -1 || cached.indexOf('FIN DE index.html') > -1 || cached.length < 5000)) {
         localStorage.removeItem('audiosync_use_cached');
         localStorage.removeItem('audiosync_cached_html');
         return;
       }
-      if(useCached==='1' && cached && cached.length>10000){
+      if (useCached === '1' && cached && cached.length > 10000) {
         window.__CACHED_APPLIED = true;
-        window.addEventListener('DOMContentLoaded', function(){
-          document.open();
-          document.write(cached);
-          document.close();
-        }, { once: true });
+        document.open();
+        document.write(cached);
+        document.close();
         return;
       }
     }catch(e){ console.log('loader err', e); }
@@ -2370,8 +2371,8 @@ function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
     }
     const AS_FIREBASE_DB_URL = "https://audiosync-740f3-default-rtdb.firebaseio.com";
     const AS_GITHUB_REPO = "rodrigoarratiap1-ship-it/audiosync-app";
-    const AS_LOCAL_VERSION = "1.3.7";
-    function getInstalledVersion(){ try{ return localStorage.getItem("audiosync_current_version") || localStorage.getItem("audiosync_cached_version") || AS_LOCAL_VERSION; }catch(e){ return AS_LOCAL_VERSION; } }
+    const AS_LOCAL_VERSION = "1.4.0";
+    function getInstalledVersion(){ return AS_LOCAL_VERSION; }
     const AS_DEV_SECRET = "76786471";
     const isDesktopElectron = Boolean(ipcRenderer);
     if (!state.authSystem) {
@@ -2767,34 +2768,34 @@ function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
         return;
       }
       try {
+        // 1. Si estamos en PC (Electron), guardamos el archivo físico en disco y recargamos la ventana nativa
+        if (ipcRenderer && workingHtmlUrl) {
+          localStorage.removeItem('audiosync_use_cached');
+          localStorage.removeItem('audiosync_cached_html');
+          showToast('Actualizando aplicación en PC...');
+          const res = await ipcRenderer.invoke('apply-github-update', { rawHtmlUrl: workingHtmlUrl });
+          if (!res?.ok) showToast('Error al actualizar en PC: ' + (res?.error || ''), true);
+          return;
+        }
+        // 2. Si estamos en Celular (Android APK), guardamos en localStorage y recargamos desde cero
         localStorage.setItem('audiosync_cached_html', newHtml);
         localStorage.setItem('audiosync_use_cached', '1');
         localStorage.setItem('audiosync_cached_at', Date.now().toString());
         if (remoteVersion) {
           localStorage.setItem('audiosync_cached_version', remoteVersion);
-          localStorage.setItem('audiosync_current_version', remoteVersion);
         }
-        if (ipcRenderer && workingHtmlUrl) {
-          await ipcRenderer.invoke('apply-github-update', { rawHtmlUrl: workingHtmlUrl });
-          return;
-        }
-        showToast('¡Actualizado a v' + (remoteVersion || '') + '! Aplicando...');
+        showToast('¡Actualizado a v' + (remoteVersion || '') + '! Reiniciando...');
         setTimeout(function() {
-          window.__CACHED_APPLIED = true;
-          document.open();
-          document.write(newHtml);
-          document.close();
-        }, 500);
+          location.reload();
+        }, 600);
       } catch (e) {
         if (stEl) stEl.textContent = "Error al guardar: " + e.message;
       }
     }
 
     async function initApp() {
-      try {
-        var ver = (typeof getInstalledVersion === 'function' ? getInstalledVersion() : AS_LOCAL_VERSION);
-        localStorage.setItem('audiosync_current_version', ver);
-      } catch (e) {}
+      const verSpan = document.getElementById('asCloud_settingsUpdateStatus');
+      if (verSpan) verSpan.textContent = 'Versión instalada: v' + AS_LOCAL_VERSION;
 
       let loaded = null;
       if (ipcRenderer) { try { loaded = await ipcRenderer.invoke('db-load'); } catch (e) {} }
