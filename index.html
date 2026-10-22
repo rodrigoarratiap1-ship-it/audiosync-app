@@ -111,32 +111,45 @@
     .win-btn { width: 32px; height: 24px; border-radius: 6px; border: 1px solid transparent; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: background-color 0.15s ease; }
     .win-btn:hover { background: var(--bg-subtle); color: var(--text-main); border-color: var(--border-col); }
     .win-btn.close:hover { background: #e50914; color: #FFFFFF; }
-* { -webkit-tap-highlight-color: transparent; }
+* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    html, body { max-width: 100vw; overflow-x: hidden !important; overscroll-behavior-x: none; }
     .backdrop-blur-xs { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
     .cal-grid-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.35rem; }
     .sticky-avail-col { position: sticky; left: 0; z-index: 20; background-color: var(--bg-card); box-shadow: 3px 0 8px -2px rgba(0,0,0,0.35); }
     .past-service-card { opacity: 0.45 !important; filter: saturate(0.35) brightness(0.88); }
     .next-meeting-ring { box-shadow: 0 0 0 2px #10B981, var(--shadow-soft) !important; border-color: #10B981 !important; }
-    input[type="range"].touch-guard-locked { pointer-events: none; opacity: 0.72; }
-    input[type="range"].touch-guard-unlocked { box-shadow: 0 0 0 2px #6366F1; opacity: 1; }
-    #toast { bottom: 62px !important; left: 12px !important; right: auto !important; }
+    input[type="range"].skill-slider { touch-action: pan-y; height: 7px; }
+    input[type="range"].skill-slider::-webkit-slider-thumb { width: 18px; height: 18px; transition: transform 0.12s ease; }
+    input[type="range"].skill-slider:active::-webkit-slider-thumb { transform: scale(1.25); }
+    .team-locked-sliders input[type="range"], .team-locked-sliders input[type="text"], .team-locked-sliders input[type="color"], .team-locked-sliders .switch-label, .team-locked-sliders .del-mem-btn { pointer-events: none; opacity: 0.45; }
+    @keyframes smoothTabFade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .smooth-view-enter { animation: smoothTabFade 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    #toast { bottom: 62px !important; left: 12px !important; right: auto !important; transition: all 0.2s ease; }
     @media (max-width: 768px) {
-      #customTitlebar, #btnOpenBatch, #btnOpenExportTop, .pc-month-arrow, .empty-placeholder-cell { display: none !important; }
+      #customTitlebar, #btnOpenBatch, #btnOpenExportTop, #btnCalendarMode, #batchModalCloseX, .pc-month-arrow, .empty-placeholder-cell { display: none !important; }
       header.sticky { top: 0 !important; }
-      body { padding-bottom: 76px !important; }
+      body { padding-bottom: 84px !important; }
       #asCloud_mobileBottomNav { display: grid !important; }
-      #asCloud_profileBadgeWrap { bottom: 62px !important; left: 8px !important; }
-      #fabBtn { bottom: 62px !important; right: 8px !important; }
-      #toast { bottom: 112px !important; left: 8px !important; }
+      #asCloud_profileBadgeWrap { bottom: 60px !important; left: 8px !important; }
+      #fabBtn { bottom: 60px !important; right: 8px !important; }
+      #toast { bottom: 108px !important; left: 8px !important; }
       .cal-grid-7, .cal-grid-2 { grid-template-columns: 1fr !important; gap: 0.55rem !important; }
       .non-service-day { display: none !important; }
       body[data-mob-day="wed"] .cell-sun-item { display: none !important; }
       body[data-mob-day="sun"] .cell-wed-item { display: none !important; }
       #headerTopRow { display: grid !important; grid-template-columns: 1fr auto; align-items: center; gap: 0.4rem; }
-      #headerActionsRow { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: 0.35rem; }
-      #headerActionsRow > * { justify-content: center; width: 100%; }
+      #mobToolsToggleBar { display: flex !important; }
+      #headerToolsRow.mob-collapsed { display: none !important; }
+      #headerToolsRow { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: 0.35rem; }
+      #headerToolsRow > * { display: contents !important; }
       #scheduleActionGroup { grid-column: span 2; display: grid !important; grid-template-columns: repeat(3, 1fr); }
       #scheduleActionGroup > button { justify-content: center; }
+      /* Pestaña Disponibilidad pantalla completa estilo Spotify en móvil */
+      #batchModal { position: fixed !important; inset: 0 0 54px 0 !important; padding: 0 !important; background: var(--bg-main) !important; z-index: 35 !important; backdrop-filter: none !important; }
+      #batchModal > div { max-width: 100% !important; max-height: 100% !important; height: 100% !important; border-radius: 0 !important; border: none !important; padding: 12px 10px !important; animation: smoothTabFade 0.2s ease-out; }
     }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -200,21 +213,27 @@
           <button id="btnOpenSettings" onclick="openModal('settingsModal')" class="p-1.5 rounded-lg surface-subtle hover:border-indigo-500" title="Configuración y Acciones"><i data-lucide="settings" class="w-4 h-4"></i></button>
         </div>
       </div>
-      <div id="headerActionsRow" class="flex items-center justify-between gap-1.5 pt-1.5 border-t border-theme flex-wrap">
+      <div id="mobToolsToggleBar" class="hidden items-center justify-between pt-1.5 border-t border-theme">
+        <button onclick="toggleMobileToolsDrawer()" class="w-full py-1.5 px-3 rounded-xl surface-subtle text-xs font-bold flex items-center justify-between">
+          <span class="flex items-center gap-1.5"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-indigo-400"></i><span>Herramientas de Líder</span></span>
+          <i id="mobToolsChevron" data-lucide="chevron-down" class="w-4 h-4 text-muted-theme transition-transform"></i>
+        </button>
+      </div>
+      <div id="headerToolsRow" class="mob-collapsed flex items-center justify-between gap-1.5 pt-1.5 border-t border-theme flex-wrap">
         <div class="flex items-center gap-1.5 flex-wrap">
           <button id="btnCalendarMode" onclick="toggleCalendarGridMode()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5"><i data-lucide="grid" class="w-3.5 h-3.5 text-indigo-400"></i><span id="calGridModeText">Modo Calendario</span></button>
-          <button id="btnNextWeek" onclick="toggleIncludeNextWeek()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:opacity-90 flex items-center gap-1.5"><i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i><span id="nextWeekBtnLabel">+1ª Sem. Nov</span></button>
+          <button id="btnNextWeek" onclick="toggleIncludeNextWeek()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:opacity-90 flex items-center gap-1.5 justify-center"><i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i><span id="nextWeekBtnLabel">+1ª Sem. Nov</span></button>
         </div>
         <div class="flex items-center gap-1.5 flex-wrap">
           <button id="btnOpenBatch" onclick="openBatchModalNormal()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5"><i data-lucide="calendar-check-2" class="w-3.5 h-3.5"></i><span>Disponibilidad</span></button>
-          <button id="btnOpenAi" onclick="openModal('aiModal')" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>IA / Fotos</span></button>
-          <button id="btnOpenTeamModal" onclick="openModal('teamModal')" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5"><i data-lucide="users" class="w-3.5 h-3.5"></i><span>Personal y Tareas</span></button>
+          <button id="btnOpenAi" onclick="openModal('aiModal')" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5 justify-center"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>IA / Fotos</span></button>
+          <button id="btnOpenTeamModal" onclick="openModal('teamModal')" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5 justify-center"><i data-lucide="users" class="w-3.5 h-3.5"></i><span>Personal y Tareas</span></button>
           <div id="scheduleActionGroup" class="flex items-center rounded-lg overflow-hidden shadow-sm">
             <button id="btnAutoSchedule" onclick="autoScheduleTeam(state.activeTeamId, false, true)" class="px-2.5 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1"><i data-lucide="wand-2" class="w-3.5 h-3.5"></i><span>Armar</span></button>
             <button onclick="autoScheduleTeam(state.activeTeamId, true, true)" class="px-2 py-1 text-xs font-bold bg-indigo-700 hover:bg-indigo-600 text-white border-l border-white/20 flex items-center gap-1"><i data-lucide="shuffle" class="w-3.5 h-3.5"></i><span>Variar</span></button>
             <button onclick="regularizeScheduleBalance()" class="px-2 py-1 text-xs font-bold bg-indigo-800 hover:bg-indigo-700 text-white border-l border-white/20 flex items-center gap-1"><i data-lucide="scale" class="w-3.5 h-3.5"></i><span>Regular</span></button>
           </div>
-          <button id="btnAutoAllTeams" onclick="autoScheduleAllEnabledTeams()" class="hidden px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white items-center gap-1.5 shadow-sm"><i data-lucide="layers" class="w-3.5 h-3.5"></i><span>Armar Todos</span></button>
+          <button id="btnAutoAllTeams" onclick="autoScheduleAllEnabledTeams()" class="hidden px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white items-center gap-1.5 justify-center shadow-sm"><i data-lucide="layers" class="w-3.5 h-3.5"></i><span>Armar Todos</span></button>
           <button id="btnOpenExportTop" onclick="openExportModal()" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm"><i data-lucide="share-2" class="w-3.5 h-3.5"></i><span>Exportar</span></button>
         </div>
       </div>
@@ -257,13 +276,13 @@
     </button>
   </div>
   <nav id="asCloud_mobileBottomNav" class="hidden fixed bottom-0 left-0 right-0 z-40 surface-card border-t border-theme px-2 py-1.5 grid-cols-3 gap-1 text-[10px] font-bold text-center">
-    <button onclick="toggleCalendarGridMode()" class="flex flex-col items-center justify-center py-1 rounded-lg text-indigo-500"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span id="mobNavCalLabel">Modo Mes</span></button>
-    <button onclick="openBatchModalNormal()" class="flex flex-col items-center justify-center py-1 rounded-lg text-muted-theme hover:text-main"><i data-lucide="calendar-check-2" class="w-4 h-4 mb-0.5"></i><span>Disponibilidad</span></button>
-    <button onclick="openExportModal()" class="flex flex-col items-center justify-center py-1 rounded-lg text-muted-theme hover:text-main"><i data-lucide="share-2" class="w-4 h-4 mb-0.5"></i><span>Exportar</span></button>
+    <button id="mobTab_mes" onclick="onTapMobileMesTab()" class="flex flex-col items-center justify-center py-1 rounded-lg text-indigo-500 transition-colors"><i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i><span id="mobNavCalLabel">Mes</span></button>
+    <button id="mobTab_avail" onclick="onTapMobileAvailTab()" class="flex flex-col items-center justify-center py-1 rounded-lg text-muted-theme hover:text-main transition-colors"><i data-lucide="calendar-check-2" class="w-4 h-4 mb-0.5"></i><span>Disponibilidad</span></button>
+    <button id="mobTab_export" onclick="openExportModal()" class="flex flex-col items-center justify-center py-1 rounded-lg text-muted-theme hover:text-main transition-colors"><i data-lucide="share-2" class="w-4 h-4 mb-0.5"></i><span>Exportar</span></button>
   </nav>
   <div id="batchModal" onclick="if(event.target===this) closeBatchModal()" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
     <div class="surface-card rounded-2xl max-w-6xl w-full p-4 max-h-[92vh] flex flex-col shadow-2xl relative">
-      <button onclick="closeBatchModal()" class="absolute top-3 right-3 p-1.5 rounded-lg text-muted-theme opacity-50 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <button id="batchModalCloseX" onclick="closeBatchModal()" class="absolute top-3 right-3 p-1.5 rounded-lg text-muted-theme opacity-50 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
       <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-theme pr-7">
         <div class="flex items-center gap-2 flex-wrap">
           <i data-lucide="calendar-check-2" class="w-4 h-4"></i>
@@ -308,11 +327,18 @@
       </div>
     </div>
   </div>
-  <div id="teamModal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
+  <div id="teamModal" onclick="if(event.target===this) closeModal('teamModal')" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
     <div class="surface-card rounded-2xl max-w-4xl w-full p-4 max-h-[92vh] flex flex-col shadow-2xl">
-      <div class="flex items-center justify-between pb-2.5 border-b border-theme">
+      <div class="flex items-center justify-between pb-2.5 border-b border-theme gap-2">
         <div class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i><h2 id="teamModalTitle" class="font-bold text-sm">Personal y Tareas</h2></div>
-        <button onclick="closeModal('teamModal')" class="p-1 rounded-lg surface-subtle"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <div class="flex items-center gap-3">
+          <label class="switch-label surface-subtle px-2.5 py-1 rounded-lg border border-theme">
+            <input type="checkbox" id="chkEnableTeamEdit" class="switch-input" onchange="toggleTeamModalEditLock(this.checked)" />
+            <span class="switch-slider emerald"></span>
+            <span class="font-bold text-xs">Modo Editar</span>
+          </label>
+          <button onclick="closeModal('teamModal')" class="p-1 rounded-lg surface-subtle"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
       </div>
       <div class="overflow-y-auto my-2.5 space-y-3 flex-1 pr-1">
         <div class="surface-subtle rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2">
@@ -1399,8 +1425,41 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
     function selectFromGlobalDropdown(dateISO, taskKey, memberId) { closeGlobalDropdown(); requestAssignWithHierarchy(dateISO, taskKey, memberId); }
     function openRescueAvailability(dateISO, taskKey, taskLabel) { closeGlobalDropdown(); rescueContext = { dateISO, taskKey, taskLabel }; state.batchPanelMode = 'avail'; openModal('batchModal'); showToast(`Habilita a alguien para ${taskLabel} en el día destacado`); }
     function clearRescueTarget() { rescueContext = null; renderBatchModal(); }
-    function openBatchModalNormal() { rescueContext = null; openModal('batchModal'); }
-    function closeBatchModal() { rescueContext = null; closeModal('batchModal'); }
+    function toggleMobileToolsDrawer() {
+      const row = document.getElementById('headerToolsRow');
+      const chev = document.getElementById('mobToolsChevron');
+      if (!row) return;
+      const isCollapsed = row.classList.toggle('mob-collapsed');
+      if (chev) chev.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+    function updateSpotifyBottomNavUI(activeTab) {
+      const tMes = document.getElementById('mobTab_mes');
+      const tAvail = document.getElementById('mobTab_avail');
+      if (tMes) tMes.className = `flex flex-col items-center justify-center py-1 rounded-lg transition-colors ${activeTab === 'mes' ? 'text-indigo-500 font-extrabold' : 'text-muted-theme'}`;
+      if (tAvail) tAvail.className = `flex flex-col items-center justify-center py-1 rounded-lg transition-colors ${activeTab === 'avail' ? 'text-indigo-500 font-extrabold' : 'text-muted-theme'}`;
+    }
+    function onTapMobileMesTab() {
+      const batchEl = document.getElementById('batchModal');
+      const isBatchOpen = batchEl && !batchEl.classList.contains('hidden');
+      if (isBatchOpen) {
+        // Si estaba en la pestaña Disponibilidad, vuelve a "Mes" manteniendo el estilo que tenía
+        closeBatchModal();
+        updateSpotifyBottomNavUI('mes');
+        const grid = document.getElementById('calendarGrid');
+        if (grid) { grid.classList.remove('smooth-view-enter'); void grid.offsetWidth; grid.classList.add('smooth-view-enter'); }
+      } else {
+        // Si ya estaba en "Mes", alterna entre Tarjetas y Modo Calendario con animación suave
+        toggleCalendarGridMode();
+        const grid = document.getElementById('calendarGrid');
+        if (grid) { grid.classList.remove('smooth-view-enter'); void grid.offsetWidth; grid.classList.add('smooth-view-enter'); }
+      }
+    }
+    function onTapMobileAvailTab() {
+      openBatchModalNormal();
+      updateSpotifyBottomNavUI('avail');
+    }
+    function openBatchModalNormal() { rescueContext = null; openModal('batchModal'); updateSpotifyBottomNavUI('avail'); }
+    function closeBatchModal() { rescueContext = null; closeModal('batchModal'); updateSpotifyBottomNavUI('mes'); }
     function setBatchPanelMode(mode) { state.batchPanelMode = mode; renderBatchModal(); }
     function toggleFloatingDock(forceState) { const dock = document.getElementById('floatingDock'); dock.classList.toggle('hidden', !(forceState !== undefined ? forceState : dock.classList.contains('hidden'))); }
     function toggleSpotlightMember(memberId) { spotlightMemberId = spotlightMemberId === memberId ? null : memberId; renderAll(); }
@@ -1880,29 +1939,12 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       getActiveServiceDates().forEach(d => { if (d.dow === targetDow) toggleDateAvailability(d.iso, memberId, isAllowed, false); });
       if (fromBatchModal) renderBatchModal(); else renderTeamModal();
     }
-    let sliderHoldTimer = null;
-    function armSliderTouchGuard(wrapperEl) {
-      const input = wrapperEl.querySelector('input[type="range"]');
-      if (!input || !input.classList.contains('touch-guard-locked')) return;
-      clearTimeout(sliderHoldTimer);
-      sliderHoldTimer = setTimeout(() => {
-        input.classList.remove('touch-guard-locked');
-        input.classList.add('touch-guard-unlocked');
-      }, 220);
-    }
-    function disarmSliderTouchGuard(wrapperEl) {
-      clearTimeout(sliderHoldTimer);
-      const input = wrapperEl.querySelector('input[type="range"]');
-      if (!input) return;
-      setTimeout(() => {
-        input.classList.add('touch-guard-locked');
-        input.classList.remove('touch-guard-unlocked');
-      }, 1200);
+    function toggleTeamModalEditLock(unlocked) {
+      const list = document.getElementById('teamEditorList');
+      if (list) list.classList.toggle('team-locked-sliders', !unlocked);
     }
     function renderTeamModal() {
       const team = curTeam();
-      const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-      const lockCls = isTouchDevice ? 'touch-guard-locked' : '';
       document.getElementById('teamModalTitle').textContent = `Personal y Tareas — ${team.name}`;
       document.getElementById('tasksEditorList').innerHTML = team.tasks.map(tk => `<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg surface-card border border-theme text-xs"><span class="mono font-extrabold px-1.5 py-0.5 rounded surface-subtle text-[10px]">${tk.short}</span><input type="text" value="${tk.name}" onchange="updateTaskName('${tk.id}', this.value)" class="bg-transparent font-bold w-28 focus:outline-none text-xs" />${team.tasks.length > 1 ? `<button onclick="deleteTaskFromActiveTeam('${tk.id}')" class="text-rose-500 hover:opacity-80"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}</div>`).join('');
       document.getElementById('teamEditorList').innerHTML = team.members.map(m => {
@@ -1921,21 +1963,23 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
                 <label class="switch-label ${!isMaster ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${sunOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 0, this.checked, false)" /><span class="switch-slider"></span><span class="font-semibold text-[10px]">Dom</span></label>
                 <label class="switch-label ${!isMaster ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${wedOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 3, this.checked, false)" /><span class="switch-slider"></span><span class="font-semibold text-[10px]">Mié</span></label>
               </div>
-              ${team.members.length > 1 ? `<button onclick="deleteMember('${m.id}')" class="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+              ${team.members.length > 1 ? `<button onclick="deleteMember('${m.id}')" class="del-mem-btn p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
             </div>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 ${!isActive ? 'pointer-events-none' : ''}">
-            <div onpointerdown="armSliderTouchGuard(this)" onpointerup="disarmSliderTouchGuard(this)" onpointercancel="disarmSliderTouchGuard(this)" class="surface-card rounded-lg px-2.5 py-1.5 border border-theme flex flex-col">
+            <div class="surface-card rounded-lg px-2.5 py-1.5 border border-theme flex flex-col">
               <div class="flex items-center justify-between text-[10px] mb-1"><span class="font-bold text-indigo-400">Carga Mensual</span><span id="lblLoad_${m.id}" class="mono font-extrabold ${isReserve ? 'text-amber-400' : ''}">${isReserve ? 'Reserva' : loadVal + '%'}</span></div>
-              <input type="range" min="0" max="100" step="1" value="${loadVal}" oninput="updateMemberLoadLevel('${m.id}', Number(this.value), this)" class="skill-slider w-full ${lockCls} ${isReserve ? 'reserve-mode' : ''}" />
+              <input type="range" min="0" max="100" step="1" value="${loadVal}" oninput="previewMemberLoadLevel('${m.id}', Number(this.value), this)" onchange="commitMemberSliders()" class="skill-slider w-full ${isReserve ? 'reserve-mode' : ''}" />
             </div>
             ${team.tasks.map(tk => {
               const skillVal = getMemberTaskSkill(m, tk.id);
-              return `<div onpointerdown="armSliderTouchGuard(this)" onpointerup="disarmSliderTouchGuard(this)" onpointercancel="disarmSliderTouchGuard(this)" class="surface-card rounded-lg px-2.5 py-1.5 border border-theme flex flex-col ${skillVal === 0 ? 'opacity-55' : ''}"><div class="flex items-center justify-between text-[10px] mb-1"><span class="font-bold truncate">${tk.name}</span><span id="lblSkill_${m.id}_${tk.id}" class="mono font-extrabold ${skillVal === 0 ? 'text-rose-500' : ''}">${skillVal === 0 ? 'No' : skillVal + '%'}</span></div><input type="range" min="0" max="100" step="1" value="${skillVal}" oninput="updateMemberTaskSkill('${m.id}', '${tk.id}', Number(this.value), this)" class="skill-slider w-full ${lockCls} ${skillVal === 0 ? 'zero-mode' : ''}" /></div>`;
+              return `<div class="surface-card rounded-lg px-2.5 py-1.5 border border-theme flex flex-col ${skillVal === 0 ? 'opacity-55' : ''}"><div class="flex items-center justify-between text-[10px] mb-1"><span class="font-bold truncate">${tk.name}</span><span id="lblSkill_${m.id}_${tk.id}" class="mono font-extrabold ${skillVal === 0 ? 'text-rose-500' : ''}">${skillVal === 0 ? 'No' : skillVal + '%'}</span></div><input type="range" min="0" max="100" step="1" value="${skillVal}" oninput="previewMemberTaskSkill('${m.id}', '${tk.id}', Number(this.value), this)" onchange="commitMemberSliders()" class="skill-slider w-full ${skillVal === 0 ? 'zero-mode' : ''}" /></div>`;
             }).join('')}
           </div>
         </div>`;
       }).join('');
+      const editChk = document.getElementById('chkEnableTeamEdit');
+      toggleTeamModalEditLock(editChk ? editChk.checked : false);
       lucide.createIcons();
     }
     function toggleMemberActiveState(memberId, isActive) {
@@ -1945,22 +1989,23 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       if (!isActive && !isMonthReadOnly()) getActiveServiceDates().forEach(d => { if (d.iso >= TODAY_ISO && team.services[d.iso]) team.tasks.forEach(tk => { if (team.services[d.iso].assignments[tk.id] === memberId && !team.services[d.iso].locked?.[tk.id]) team.services[d.iso].assignments[tk.id] = null; }); });
       renderAll(); renderTeamModal(); showToast(`${m.name}: ${isActive ? 'Reactivado' : 'En pausa'}`);
     }
-    function updateMemberLoadLevel(memberId, rawVal, inputEl) {
+    function previewMemberLoadLevel(memberId, rawVal, inputEl) {
       const m = curTeam().members.find(x => x.id === memberId); if (!m) return;
       const isReserve = rawVal < 20; m.loadLevel = isReserve ? 0 : rawVal;
       const lbl = document.getElementById(`lblLoad_${memberId}`);
       if (lbl) { lbl.textContent = isReserve ? 'Reserva' : rawVal + '%'; lbl.classList.toggle('text-amber-600', isReserve); lbl.classList.toggle('dark:text-amber-400', isReserve); }
       if (inputEl) inputEl.classList.toggle('reserve-mode', isReserve);
-      saveState(); renderFloatingDockMembers();
     }
-    function updateMemberTaskSkill(memberId, taskId, val, inputEl) {
+    function previewMemberTaskSkill(memberId, taskId, val, inputEl) {
       const m = curTeam().members.find(x => x.id === memberId); if (!m) return;
       if (!m.taskSkills) m.taskSkills = {};
       const cleanVal = val < 5 ? 0 : val; m.taskSkills[taskId] = cleanVal;
       const lbl = document.getElementById(`lblSkill_${memberId}_${taskId}`);
       if (lbl) { lbl.textContent = cleanVal === 0 ? 'No' : cleanVal + '%'; lbl.classList.toggle('text-rose-500', cleanVal === 0); lbl.closest('.surface-card')?.classList.toggle('opacity-55', cleanVal === 0); }
       if (inputEl) inputEl.classList.toggle('zero-mode', cleanVal === 0);
-      saveState(); renderCalendarGrid(); lucide.createIcons();
+    }
+    function commitMemberSliders() {
+      saveState(); renderFloatingDockMembers(); renderCalendarGrid(); lucide.createIcons();
     }
     function addTaskToActiveTeam() {
       const team = curTeam(), nameIn = document.getElementById('newTaskName'), shortIn = document.getElementById('newTaskShort'), name = nameIn.value.trim();
