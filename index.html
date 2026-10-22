@@ -111,11 +111,16 @@
     .win-btn:hover { background: var(--bg-subtle); color: var(--text-main); border-color: var(--border-col); }
     .win-btn.close:hover { background: #e50914; color: #FFFFFF; }
 * { -webkit-tap-highlight-color: transparent; }
+    .backdrop-blur-xs { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
     .cal-grid-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.35rem; }
     .sticky-avail-col { position: sticky; left: 0; z-index: 20; background-color: var(--bg-card); box-shadow: 3px 0 8px -2px rgba(0,0,0,0.35); }
+    .past-service-card { opacity: 0.45 !important; filter: saturate(0.35) brightness(0.88); }
+    .next-meeting-ring { box-shadow: 0 0 0 2px #10B981, var(--shadow-soft) !important; border-color: #10B981 !important; }
+    input[type="range"].touch-guard-locked { pointer-events: none; opacity: 0.72; }
+    input[type="range"].touch-guard-unlocked { box-shadow: 0 0 0 2px #6366F1; opacity: 1; }
     #toast { bottom: 62px !important; left: 12px !important; right: auto !important; }
     @media (max-width: 768px) {
-      #customTitlebar, #btnOpenBatch, #btnOpenExportTop { display: none !important; }
+      #customTitlebar, #btnOpenBatch, #btnOpenExportTop, .pc-month-arrow, .empty-placeholder-cell { display: none !important; }
       header.sticky { top: 0 !important; }
       body { padding-bottom: 76px !important; }
       #asCloud_mobileBottomNav { display: grid !important; }
@@ -126,7 +131,12 @@
       .non-service-day { display: none !important; }
       body[data-mob-day="wed"] .cell-sun-item { display: none !important; }
       body[data-mob-day="sun"] .cell-wed-item { display: none !important; }
-    }    
+      #headerTopRow { display: grid !important; grid-template-columns: 1fr auto; align-items: center; gap: 0.4rem; }
+      #headerActionsRow { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: 0.35rem; }
+      #headerActionsRow > * { justify-content: center; width: 100%; }
+      #scheduleActionGroup { grid-column: span 2; display: grid !important; grid-template-columns: repeat(3, 1fr); }
+      #scheduleActionGroup > button { justify-content: center; }
+    }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-col); border-radius: 9999px; }
@@ -161,29 +171,35 @@
   <div id="globalSlotDropdown" class="hidden fixed z-[9999] w-64 surface-card rounded-xl shadow-2xl border-2 border-indigo-500/40 py-1 max-h-64 overflow-y-auto"></div>
   <header class="sticky top-0 z-30 surface-card border-b border-theme">
     <div class="max-w-[1440px] mx-auto px-3 py-2 flex flex-col gap-2">
-      <div class="flex items-center justify-between gap-2 flex-wrap">
-        <div class="flex items-center gap-2.5 flex-wrap">
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] mono px-2 py-1 rounded surface-subtle font-bold flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>HOY: DOM 18 OCT</span>
-            <span id="readOnlyBadge" class="hidden text-[10px] mono px-2 py-0.5 rounded badge-sun font-bold flex items-center gap-1"><i data-lucide="lock" class="w-3 h-3"></i> REGISTRO HISTÓRICO</span>
+      <div id="headerTopRow" class="flex items-center justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button onclick="scrollToNextMeeting(true)" class="text-[10px] mono px-2 py-1 rounded surface-subtle font-bold flex items-center gap-1.5 hover:border-indigo-500" title="Ir a la próxima reunión">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span id="todayHeaderBadgeText">HOY</span>
+          </button>
+          <div class="flex items-center surface-subtle rounded-lg p-0.5 relative">
+            <button onclick="changeMonth(-1)" class="pc-month-arrow p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+            <button onclick="openMonthPickerPopover(event)" id="monthLabel" class="px-2 py-0.5 text-xs font-bold capitalize text-center truncate select-none hover:text-indigo-400">Octubre 2026</button>
+            <button onclick="changeMonth(1)" class="pc-month-arrow p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            <div id="monthPickerPopover" onclick="event.stopPropagation()" class="hidden absolute top-9 left-0 z-50 surface-card rounded-xl p-2.5 shadow-2xl border border-indigo-500/40 w-56 space-y-2 text-xs">
+              <div class="flex items-center justify-between font-bold border-b border-theme pb-1">
+                <button onclick="stepPickerYear(-1)" class="px-2 py-0.5 rounded surface-subtle">-1 Año</button>
+                <span id="pickerYearLabel" class="mono font-extrabold">2026</span>
+                <button onclick="stepPickerYear(1)" class="px-2 py-0.5 rounded surface-subtle">+1 Año</button>
+              </div>
+              <div id="pickerMonthsGrid" class="grid grid-cols-3 gap-1"></div>
+              <button onclick="goToCurrentMonth(); closeMonthPickerPopover();" class="w-full py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px]">Ir al Mes Actual</button>
+            </div>
           </div>
-          <div id="teamSwitcherBar" class="flex items-center gap-1 surface-subtle p-0.5 rounded-xl ml-1"></div>
+          <button id="btnGoCurrentMonth" onclick="goToCurrentMonth()" class="hidden px-2 py-1 rounded-lg text-[11px] font-bold surface-elevated hover:border-indigo-500 items-center gap-1"><i data-lucide="rotate-ccw" class="w-3 h-3"></i><span>Actual</span></button>
+          <span id="readOnlyBadge" class="hidden text-[10px] mono px-2 py-0.5 rounded badge-sun font-bold flex items-center gap-1"><i data-lucide="lock" class="w-3 h-3"></i> HISTÓRICO</span>
         </div>
-        <div class="flex items-center gap-1.5">
-          <button id="btnGoCurrentMonth" onclick="goToCurrentMonth()" class="hidden px-2.5 py-1 rounded-lg text-xs font-bold surface-elevated hover:border-indigo-500 items-center gap-1"><i data-lucide="rotate-ccw" class="w-3 h-3"></i><span>Mes Actual</span></button>
-          <div class="flex items-center surface-subtle rounded-lg p-0.5">
-            <button onclick="changeMonth(-1)" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
-            <span id="monthLabel" class="w-[148px] text-xs font-bold capitalize text-center truncate select-none">Octubre 2026</span>
-            <button onclick="changeMonth(1)" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
-          </div>
-          <div class="flex items-center surface-subtle rounded-lg p-0.5">
-            <button onclick="undoLastAction()" id="btnUndo" disabled class="p-1 rounded disabled:opacity-30 hover:bg-black/10 dark:hover:bg-white/10"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i></button>
-            <button onclick="redoLastAction()" id="btnRedo" disabled class="p-1 rounded disabled:opacity-30 hover:bg-black/10 dark:hover:bg-white/10"><i data-lucide="redo-2" class="w-3.5 h-3.5"></i></button>
-          </div>
-          <button id="btnOpenSettings" onclick="openModal('settingsModal')" class="p-1.5 rounded-lg surface-subtle hover:border-indigo-500" title="Configuración y Vistas"><i data-lucide="settings" class="w-3.5 h-3.5"></i></button>
+        <div class="flex items-center gap-1.5 justify-end">
+          <div id="teamSwitcherBar" class="flex items-center gap-1 surface-subtle p-0.5 rounded-xl"></div>
+          <button id="btnOpenSettings" onclick="openModal('settingsModal')" class="p-1.5 rounded-lg surface-subtle hover:border-indigo-500" title="Configuración y Acciones"><i data-lucide="settings" class="w-4 h-4"></i></button>
         </div>
       </div>
-      <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-theme flex-wrap">
+      <div id="headerActionsRow" class="flex items-center justify-between gap-1.5 pt-1.5 border-t border-theme flex-wrap">
         <div class="flex items-center gap-1.5 flex-wrap">
           <button id="btnCalendarMode" onclick="toggleCalendarGridMode()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:border-indigo-500 flex items-center gap-1.5"><i data-lucide="grid" class="w-3.5 h-3.5 text-indigo-400"></i><span id="calGridModeText">Modo Calendario</span></button>
           <button id="btnNextWeek" onclick="toggleIncludeNextWeek()" class="px-2.5 py-1 rounded-lg text-xs font-semibold surface-subtle hover:opacity-90 flex items-center gap-1.5"><i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"></i><span id="nextWeekBtnLabel">+1ª Sem. Nov</span></button>
@@ -197,8 +213,6 @@
             <button onclick="autoScheduleTeam(state.activeTeamId, true, true)" class="px-2 py-1 text-xs font-bold bg-indigo-700 hover:bg-indigo-600 text-white border-l border-white/20 flex items-center gap-1"><i data-lucide="shuffle" class="w-3.5 h-3.5"></i><span>Variar</span></button>
             <button onclick="regularizeScheduleBalance()" class="px-2 py-1 text-xs font-bold bg-indigo-800 hover:bg-indigo-700 text-white border-l border-white/20 flex items-center gap-1"><i data-lucide="scale" class="w-3.5 h-3.5"></i><span>Regular</span></button>
           </div>
-          <button id="btnLockAllMonth" onclick="toggleLockAllMonth()" class="p-1.5 rounded-lg surface-subtle hover:text-amber-500"><i data-lucide="lock" class="w-3.5 h-3.5"></i></button>
-          <button id="btnClearMonth" onclick="clearMonthUnlocked()" class="p-1.5 rounded-lg surface-subtle hover:text-rose-500"><i data-lucide="eraser" class="w-3.5 h-3.5"></i></button>
           <button id="btnAutoAllTeams" onclick="autoScheduleAllEnabledTeams()" class="hidden px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white items-center gap-1.5 shadow-sm"><i data-lucide="layers" class="w-3.5 h-3.5"></i><span>Armar Todos</span></button>
           <button id="btnOpenExportTop" onclick="openExportModal()" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm"><i data-lucide="share-2" class="w-3.5 h-3.5"></i><span>Exportar</span></button>
         </div>
@@ -272,17 +286,23 @@
         <div class="flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i><span id="rescueBannerText">Nadie estaba disponible para este turno.</span></div>
         <button onclick="clearRescueTarget()" class="text-[11px] underline font-bold shrink-0">Cancelar selección</button>
       </div>
-      <div class="overflow-auto my-3 flex-1">
-        <table class="w-full text-xs border-collapse">
-          <thead><tr id="batchTableHead" class="border-b border-theme text-muted-theme"></tr></thead>
-          <tbody id="batchTableBody" class="divide-y border-theme"></tbody>
-        </table>
+      <div class="overflow-y-auto my-3 flex-1 space-y-3 pr-1">
+        <div id="batchPersonFocusContainer" class="space-y-3"></div>
+        <details id="batchFullTableDetails" class="surface-subtle rounded-xl p-2.5 border border-theme">
+          <summary class="text-xs font-bold cursor-pointer text-muted-theme hover:text-main">Ver tabla completa del mes (Todos los integrantes)</summary>
+          <div class="overflow-auto mt-2">
+            <table class="w-full text-xs border-collapse">
+              <thead><tr id="batchTableHead" class="border-b border-theme text-muted-theme"></tr></thead>
+              <tbody id="batchTableBody" class="divide-y border-theme"></tbody>
+            </table>
+          </div>
+        </details>
       </div>
       <div class="flex items-center justify-between pt-2 border-t border-theme text-xs flex-wrap gap-2">
-        <span class="text-muted-theme">Casilla <b>Verde con Borde Rojo</b> = Excepción habilitada en un día desactivado por regla general.</span>
+        <span class="text-muted-theme">Borde Rojo = Excepción habilitada en un día desactivado por regla base.</span>
         <div class="flex gap-2">
           <button id="btnBatchAutoArm" onclick="autoScheduleTeam(state.activeTeamId, true, true); closeBatchModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold">Auto-Armar Equitativo</button>
-          <button onclick="closeBatchModal()" class="px-3 py-1.5 rounded-lg surface-subtle font-semibold">Guardar y Cerrar</button>
+          <button onclick="closeBatchModal()" class="px-3 py-1.5 rounded-lg surface-subtle font-semibold">Listo</button>
         </div>
       </div>
     </div>
@@ -382,29 +402,48 @@ Gustavo: 4, 11, 25</textarea>
       <div class="flex items-center justify-between pb-3 border-b border-theme pr-7">
         <div class="flex items-center gap-2"><i data-lucide="settings" class="w-4 h-4"></i><h2 class="font-bold text-sm">Configuración y Estilo de Vista</h2></div>
       </div>
-      <div class="overflow-y-auto my-3 space-y-4 flex-1 pr-1 text-xs">
-        <div class="surface-subtle rounded-xl p-3 space-y-2">
-          <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Tema de la Aplicación</span>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button onclick="setUiTheme('dark_slate')" id="uiTheme_dark_slate" class="p-2.5 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-3 rounded bg-[#131B2E] border border-[#283652]"></span><span>Oscuro Estudio</span></button>
-            <button onclick="setUiTheme('dark_neutral')" id="uiTheme_dark_neutral" class="p-2.5 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-3 rounded bg-[#16161A] border border-[#e50914]"></span><span>Oscuro Carmesí</span></button>
-            <button onclick="setUiTheme('paper')" id="uiTheme_paper" class="p-2.5 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-3 rounded bg-[#EAE4D6] border border-[#AFA58F]"></span><span>Papel Cálido</span></button>
-            <button onclick="setUiTheme('light_clean')" id="uiTheme_light_clean" class="p-2.5 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-3 rounded bg-[#F1F5F9] border border-[#94A3B8]"></span><span>Claro Pizarra</span></button>
+      <div class="overflow-y-auto my-3 space-y-2.5 flex-1 pr-1 text-xs">
+        <!-- 1. APARIENCIA Y VISTAS -->
+        <details open class="surface-subtle rounded-xl p-3 border border-theme">
+          <summary class="font-bold cursor-pointer text-xs flex items-center justify-between">
+            <span class="flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4 text-indigo-400"></i><span>1. Apariencia y Estilo de Vista</span></span>
+          </summary>
+          <div class="mt-3 space-y-3">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button onclick="setUiTheme('dark_slate')" id="uiTheme_dark_slate" class="p-2 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-2.5 rounded bg-[#131B2E] border border-[#283652]"></span><span>Oscuro Estudio</span></button>
+              <button onclick="setUiTheme('dark_neutral')" id="uiTheme_dark_neutral" class="p-2 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-2.5 rounded bg-[#16161A] border border-[#e50914]"></span><span>Oscuro Carmesí</span></button>
+              <button onclick="setUiTheme('paper')" id="uiTheme_paper" class="p-2 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-2.5 rounded bg-[#EAE4D6] border border-[#AFA58F]"></span><span>Papel Cálido</span></button>
+              <button onclick="setUiTheme('light_clean')" id="uiTheme_light_clean" class="p-2 rounded-xl surface-card border-2 text-left font-bold flex flex-col gap-1"><span class="w-full h-2.5 rounded bg-[#F1F5F9] border border-[#94A3B8]"></span><span>Claro Pizarra</span></button>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-theme">
+              <button id="btnViewMode" onclick="toggleViewMode()" class="p-2 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="calendar-range" class="w-3.5 h-3.5"></i><span id="viewModeText">Vista 7 Días</span></button>
+              <button id="btnCalendarModeInSettings" onclick="toggleCalendarGridMode()" class="p-2 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="grid" class="w-3.5 h-3.5"></i><span>Modo Mes</span></button>
+              <button id="btnDenseMode" onclick="toggleDenseMode()" class="p-2 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="minimize-2" class="w-3.5 h-3.5"></i><span id="denseModeText">Compactar</span></button>
+              <button id="btnHidePast" onclick="toggleHidePast()" class="p-2 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="eye-off" class="w-3.5 h-3.5"></i><span id="hidePastText">Ocultar Pasados</span></button>
+            </div>
           </div>
-        </div>
-        <div class="surface-subtle rounded-xl p-3 space-y-2">
-          <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Estilo de Vista del Calendario</span>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button id="btnViewMode" onclick="toggleViewMode()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="calendar-range" class="w-3.5 h-3.5"></i><span id="viewModeText">Vista 7 Días</span></button>
-            <button id="btnCalendarModeInSettings" onclick="toggleCalendarGridMode()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="grid" class="w-3.5 h-3.5"></i><span>Modo Calendario Mes</span></button>
-            <button id="btnDenseMode" onclick="toggleDenseMode()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="minimize-2" class="w-3.5 h-3.5"></i><span id="denseModeText">Compactar</span></button>
-            <button id="btnHidePast" onclick="toggleHidePast()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="eye-off" class="w-3.5 h-3.5"></i><span id="hidePastText">Ocultar Pasados</span></button>
+        </details>
+
+        <!-- 2. ACCESOS DIRECTOS Y ACCIONES DEL MES -->
+        <details class="surface-subtle rounded-xl p-3 border border-theme">
+          <summary class="font-bold cursor-pointer text-xs flex items-center justify-between">
+            <span class="flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4 text-amber-400"></i><span>2. Accesos Directos y Acciones del Mes</span></span>
+          </summary>
+          <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button onclick="undoLastAction()" id="btnUndo" disabled class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 disabled:opacity-35"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i><span>Deshacer</span></button>
+            <button onclick="redoLastAction()" id="btnRedo" disabled class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 disabled:opacity-35"><i data-lucide="redo-2" class="w-3.5 h-3.5"></i><span>Rehacer</span></button>
+            <button id="btnLockAllMonth" onclick="toggleLockAllMonth()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:text-amber-400"><i data-lucide="lock" class="w-3.5 h-3.5"></i><span>Candado a Todo</span></button>
+            <button id="btnClearMonth" onclick="clearMonthUnlocked()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:text-rose-400"><i data-lucide="eraser" class="w-3.5 h-3.5"></i><span>Limpiar Mes</span></button>
           </div>
-        </div>
-        <div id="adminSettingsSection" class="space-y-4">
-          <div class="surface-subtle rounded-xl p-3 space-y-2.5">
-            <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Elementos Visibles en el Calendario</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        </details>
+
+        <!-- 3. OPCIONES DE LÍDER (ELEMENTOS Y EQUIPOS) -->
+        <div id="adminSettingsSection" class="space-y-2.5">
+          <details class="surface-subtle rounded-xl p-3 border border-theme">
+            <summary class="font-bold cursor-pointer text-xs flex items-center justify-between">
+              <span class="flex items-center gap-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-400"></i><span>3. Elementos Visibles en las Tarjetas</span></span>
+            </summary>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Indicador de Días Seguidos / Descanso</span><input type="checkbox" id="pref_showStreakBadge" class="switch-input" onchange="updateUiPref('showStreakBadge', this.checked)" /><span class="switch-slider emerald"></span></label>
               <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Notas en los Cultos</span><input type="checkbox" id="pref_showNotesBtn" class="switch-input" onchange="updateUiPref('showNotesBtn', this.checked)" /><span class="switch-slider emerald"></span></label>
               <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Tira de Lucecitas de Disponibilidad</span><input type="checkbox" id="pref_showAvailDots" class="switch-input" onchange="updateUiPref('showAvailDots', this.checked)" /><span class="switch-slider emerald"></span></label>
@@ -412,35 +451,49 @@ Gustavo: 4, 11, 25</textarea>
               <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Botón Intercambiar Puestos (⇄)</span><input type="checkbox" id="pref_showQuickSwapBtn" class="switch-input" onchange="updateUiPref('showQuickSwapBtn', this.checked)" /><span class="switch-slider emerald"></span></label>
               <label class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between cursor-pointer"><span class="font-bold">Destacar Reemplazos (10 seg)</span><input type="checkbox" id="pref_highlightSwaps" class="switch-input" onchange="updateUiPref('highlightSwaps', this.checked)" /><span class="switch-slider emerald"></span></label>
             </div>
-          </div>
-          <div class="surface-subtle rounded-xl p-3 space-y-2.5">
-            <span class="font-bold uppercase tracking-wider text-[10px] text-muted-theme">Equipos Configurados</span>
-            <div id="settingsTeamsList" class="space-y-2"></div>
-            <div class="pt-2 border-t border-theme flex flex-wrap items-center gap-2">
-              <input id="newTeamNameInput" type="text" placeholder="Nuevo equipo (ej. Alabanza, Ujieres)" class="px-2.5 py-1.5 rounded-lg surface-card border border-theme text-xs flex-1" />
-              <input id="newTeamColorInput" type="color" value="#10B981" class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
-              <button onclick="createNewTeam()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold">+ Crear Equipo</button>
+          </details>
+
+          <details class="surface-subtle rounded-xl p-3 border border-theme">
+            <summary class="font-bold cursor-pointer text-xs flex items-center justify-between">
+              <span class="flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-purple-400"></i><span>4. Equipos Configurados</span></span>
+            </summary>
+            <div class="mt-3 space-y-2.5">
+              <div id="settingsTeamsList" class="space-y-2"></div>
+              <div class="pt-2 border-t border-theme flex flex-wrap items-center gap-2">
+                <input id="newTeamNameInput" type="text" placeholder="Nuevo equipo (ej. Alabanza, Ujieres)" class="px-2.5 py-1.5 rounded-lg surface-card border border-theme text-xs flex-1" />
+                <input id="newTeamColorInput" type="color" value="#10B981" class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
+                <button onclick="createNewTeam()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold">+ Crear Equipo</button>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- 5. ACTUALIZACIONES Y RESPALDO -->
+        <details open class="surface-subtle rounded-xl p-3 border border-theme">
+          <summary class="font-bold cursor-pointer text-xs flex items-center justify-between">
+            <span class="flex items-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4 text-indigo-400"></i><span>5. Actualizaciones y Copias de Seguridad</span></span>
+          </summary>
+          <div class="mt-3 space-y-2.5">
+            <div class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div class="font-bold">Estado de Versión</div>
+                <div id="asCloud_settingsUpdateStatus" class="text-[11px] text-muted-theme">Versión instalada: v1.3.7</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="asCloud_checkForGitHubUpdates(true)" class="px-3 py-1.5 rounded-lg surface-subtle font-bold hover:border-indigo-500">Buscar</button>
+                <button id="asCloud_btnSettingsUpdateNow" onclick="asCloud_applyUpdateNow()" class="hidden px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">Actualizar</button>
+              </div>
+            </div>
+            <div class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between flex-wrap gap-2">
+              <div class="font-bold">Respaldo y Calendario .ICS</div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button onclick="downloadICSFile()" class="px-2.5 py-1 rounded-lg surface-subtle font-bold">Exportar .ICS</button>
+                <button onclick="exportBackupJSON()" class="px-2.5 py-1 rounded-lg surface-subtle font-bold">Guardar Backup</button>
+                <label class="px-2.5 py-1 rounded-lg surface-subtle font-bold cursor-pointer">Cargar Backup<input type="file" accept=".json" class="hidden" onchange="importBackupJSON(event)" /></label>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="surface-subtle rounded-xl p-3 flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <div class="font-bold flex items-center gap-1.5"><i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-400"></i><span>Actualizaciones de la App</span></div>
-            <div id="asCloud_settingsUpdateStatus" class="text-[11px] text-muted-theme">Versión instalada: v1.2.0</div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="asCloud_checkForGitHubUpdates(true)" class="px-3 py-1.5 rounded-lg surface-card font-bold hover:border-indigo-500">Buscar</button>
-            <button id="asCloud_btnSettingsUpdateNow" onclick="asCloud_applyUpdateNow()" class="hidden px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">Instalar Actualización</button>
-          </div>
-        </div>
-        <div class="surface-subtle rounded-xl p-3 flex items-center justify-between flex-wrap gap-2">
-          <div><div class="font-bold">Respaldo y Calendario .ICS</div><div class="text-[11px] text-muted-theme">Guarda tu base de datos o exporta a Google Calendar.</div></div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <button onclick="downloadICSFile()" class="px-3 py-1.5 rounded-lg surface-card font-bold hover:border-indigo-500">Exportar .ICS</button>
-            <button onclick="exportBackupJSON()" class="px-3 py-1.5 rounded-lg surface-card font-bold hover:border-indigo-500">Guardar Backup</button>
-            <label class="px-3 py-1.5 rounded-lg surface-card font-bold hover:border-indigo-500 cursor-pointer">Cargar Backup<input type="file" accept=".json" class="hidden" onchange="importBackupJSON(event)" /></label>
-          </div>
-        </div>
+        </details>
         <details class="surface-subtle rounded-xl p-3 border border-theme">
           <summary class="font-bold cursor-pointer text-[11px] text-muted-theme hover:text-main">Avanzado (Dev)</summary>
           <div class="mt-2.5 space-y-3">
@@ -626,9 +679,10 @@ Gustavo: 4, 11, 25</textarea>
         if (cmd === 'window-close') window.electronAPI.close();
       }
     }
-    const TODAY_ISO = '2026-10-18';
-    const CURRENT_YEAR = 2026;
-    const CURRENT_MONTH = 9;
+    const _realNow = new Date();
+    const CURRENT_YEAR = _realNow.getFullYear();
+    const CURRENT_MONTH = _realNow.getMonth();
+    const TODAY_ISO = `${CURRENT_YEAR}-${String(CURRENT_MONTH + 1).padStart(2, '0')}-${String(_realNow.getDate()).padStart(2, '0')}`;
     const DEFAULT_UI_PREFS = { showStreakBadge: true, showNotesBtn: true, showAvailDots: true, showCloneBtns: true, showQuickSwapBtn: true, highlightSwaps: true };
     const DEFAULT_EXPORT_CONFIG = {
       subtitle: 'IGLESIA // EQUIPO DE SERVICIO', customTitle: '', colWedLabel: 'MIÉRCOLES', colSunLabel: 'DOMINGOS',
@@ -833,6 +887,75 @@ Gustavo: 4, 11, 25</textarea>
       weeks.forEach(w => w.forEach((cell, monIdx) => { if (cell && (monIdx === 2 || monIdx === 6 || isCustomServiceDate(cell.iso))) dates.push(cell); }));
       return dates;
     }
+    function getNextMeetingISO() {
+      const dates = getActiveServiceDates();
+      const found = dates.find(d => d.iso >= TODAY_ISO);
+      return found ? found.iso : null;
+    }
+    function getNext10ServiceDatesFromToday() {
+      const result = [];
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      for (let i = 0; i < 65 && result.length < 10; i++) {
+        const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+        const iso = toISO(dt.getFullYear(), dt.getMonth(), dt.getDate());
+        const jsDow = dt.getDay();
+        if (jsDow === 0 || jsDow === 3 || isCustomServiceDate(iso)) {
+          result.push({
+            iso, dayNum: dt.getDate(), dow: jsDow,
+            monthShort: dt.toLocaleDateString('es-CL', { month: 'short' }).replace('.', '')
+          });
+        }
+      }
+      return result;
+    }
+    function updateTodayHeaderBadge() {
+      const el = document.getElementById('todayHeaderBadgeText');
+      if (!el) return;
+      const now = new Date();
+      const dNames = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+      const mShort = now.toLocaleDateString('es-CL', { month: 'short' }).replace('.', '').toUpperCase();
+      el.textContent = `HOY: ${dNames[now.getDay()]} ${now.getDate()} ${mShort}`;
+    }
+    let pickerTempYear = CURRENT_YEAR;
+    function openMonthPickerPopover(ev) {
+      if (ev) ev.stopPropagation();
+      const pop = document.getElementById('monthPickerPopover');
+      if (!pop) return;
+      pickerTempYear = state.year;
+      renderMonthPickerPopover();
+      pop.classList.toggle('hidden');
+    }
+    function closeMonthPickerPopover() {
+      const pop = document.getElementById('monthPickerPopover');
+      if (pop) pop.classList.add('hidden');
+    }
+    function stepPickerYear(delta) {
+      pickerTempYear += delta;
+      renderMonthPickerPopover();
+    }
+    function renderMonthPickerPopover() {
+      const yLbl = document.getElementById('pickerYearLabel');
+      const grid = document.getElementById('pickerMonthsGrid');
+      if (!yLbl || !grid) return;
+      yLbl.textContent = pickerTempYear;
+      const mNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      grid.innerHTML = mNames.map((m, idx) => {
+        const isCur = (pickerTempYear === state.year && idx === state.month);
+        return `<button onclick="selectMonthFromPicker(${pickerTempYear}, ${idx})" class="py-1.5 rounded-lg font-bold text-xs ${isCur ? 'bg-indigo-600 text-white' : 'surface-subtle hover:border-indigo-500'}">${m}</button>`;
+      }).join('');
+    }
+    function selectMonthFromPicker(y, m) {
+      state.year = y; state.month = m;
+      closeMonthPickerPopover();
+      renderAll();
+    }
+    function scrollToNextMeeting(smooth = true) {
+      const nextIso = getNextMeetingISO();
+      if (!nextIso) return;
+      const target = document.getElementById('srvCard_' + nextIso) || document.getElementById('calCell_' + nextIso);
+      if (target) target.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'center' });
+    }
     function buildWeeksMatrix() {
       const rawWeeks = [], daysInMonth = new Date(state.year, state.month + 1, 0).getDate();
       let currentWeek = new Array(7).fill(null);
@@ -998,18 +1121,22 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       }
     }
     function renderCalendarGrid() {
+      updateTodayHeaderBadge();
       const grid = document.getElementById('calendarGrid'), weeks = buildWeeksMatrix(), readOnly = isMonthReadOnly() || !asCloud_canEditCalendar();
-      const team = curTeam();
+      const team = curTeam(), nextMeetingISO = getNextMeetingISO();
       if (state.viewMode === 'cal') {
         grid.className = 'space-y-1';
         grid.innerHTML = weeks.map(week => `<div class="cal-grid-month">${week.map((cell, monIdx) => {
-          if (!cell) return `<div class="rounded-xl surface-subtle opacity-20 min-h-[68px]"></div>`;
+          if (!cell) return `<div class="rounded-xl surface-subtle opacity-15 min-h-[68px]"></div>`;
           const isService = (monIdx === 2 || monIdx === 6 || isCustomServiceDate(cell.iso));
+          const isPast = cell.iso < TODAY_ISO && !isMonthReadOnly();
+          const isToday = cell.iso === TODAY_ISO;
+          const isNextMeet = cell.iso === nextMeetingISO;
           const srv = team.services[cell.iso];
           const assignedNames = isService && srv ? team.tasks.map(tk => team.members.find(m => m.id === srv.assignments?.[tk.id])?.name?.slice(0, 6) || '?') : [];
           const isSpot = spotlightMemberId && srv && Object.values(srv.assignments || {}).includes(spotlightMemberId);
-          return `<div onclick="openDayFloatingDetail('${cell.iso}', ${monIdx})" class="cursor-pointer rounded-xl p-1.5 min-h-[68px] flex flex-col justify-between border transition-all ${isSpot ? 'member-spotlight-hit' : ''} ${isService ? (cell.dow===0 ? 'badge-sun border-amber-500/40' : 'badge-wed border-indigo-500/40') : 'surface-card border-theme opacity-75 hover:opacity-100'}">
-            <div class="flex items-center justify-between"><span class="mono text-xs font-extrabold">${cell.dayNum}</span>${srv?.note ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>' : ''}</div>
+          return `<div id="calCell_${cell.iso}" onclick="openDayFloatingDetail('${cell.iso}', ${monIdx})" class="cursor-pointer rounded-xl p-1.5 min-h-[68px] flex flex-col justify-between border transition-all ${isPast ? 'past-service-card' : ''} ${isNextMeet ? 'next-meeting-ring' : ''} ${isSpot ? 'member-spotlight-hit' : ''} ${isService ? (cell.dow===0 ? 'badge-sun border-amber-500/40' : 'badge-wed border-indigo-500/40') : 'surface-card border-theme opacity-75 hover:opacity-100'}">
+            <div class="flex items-center justify-between"><span class="mono text-xs font-extrabold">${cell.dayNum}</span>${isToday ? '<span class="text-[8px] px-1 rounded bg-indigo-600 text-white font-extrabold">HOY</span>' : isNextMeet ? '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>' : ''}</div>
             <div class="space-y-0.5">${assignedNames.map(n => `<div class="text-[9px] font-bold truncate bg-black/20 rounded px-1">${n}</div>`).join('')}</div>
           </div>`;
         }).join('')}</div>`).join('');
@@ -1021,7 +1148,7 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
           const wed = week[2], sun = week[6];
           if (!wed && !sun) return '';
           if (state.hidePast && (!wed || wed.iso < TODAY_ISO) && (!sun || sun.iso < TODAY_ISO)) return '';
-          return `<div class="cal-grid-2">${wed ? renderServiceCell(wed) : '<div class="cell-wed-item surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-45 min-h-[90px]">Sin miércoles en esta semana</div>'}${sun ? renderServiceCell(sun) : '<div class="cell-sun-item surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-45 min-h-[90px]">Sin domingo en esta semana</div>'}</div>`;
+          return `<div class="cal-grid-2">${wed ? renderServiceCell(wed) : '<div class="empty-placeholder-cell cell-wed-item surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-35 min-h-[90px]">Sin miércoles</div>'}${sun ? renderServiceCell(sun) : '<div class="empty-placeholder-cell cell-sun-item surface-subtle rounded-xl p-3 flex items-center justify-center text-xs text-muted-theme opacity-35 min-h-[90px]">Sin domingo</div>'}</div>`;
         }).join('');
         return;
       }
@@ -1032,7 +1159,7 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
         return `<div class="cal-grid-7">${week.map((cell, monIdx) => {
           const isServiceCol = (monIdx === 2 || monIdx === 6) || (cell && isCustomServiceDate(cell.iso));
           const minH = state.denseMode ? 'min-h-[86px]' : 'min-h-[112px]';
-          if (!cell) return `<div class="${(monIdx === 2 || monIdx === 6) ? '' : 'non-service-day'} rounded-xl surface-subtle opacity-25 ${minH}"></div>`;
+          if (!cell) return `<div class="${(monIdx === 2 || monIdx === 6) ? 'empty-placeholder-cell' : 'non-service-day'} rounded-xl surface-subtle opacity-25 ${minH}"></div>`;
           if (isServiceCol) return renderServiceCell(cell);
           return `<div class="non-service-day group rounded-xl p-1.5 flex flex-col justify-between ${minH} ${cell.isNextMonth ? 'extra-week-card opacity-85' : 'surface-subtle opacity-70 hover:opacity-100'}"><div class="flex items-center justify-between"><span class="mono text-[11px] font-bold text-muted-theme">${cell.dayNum}</span><span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase">${cell.isNextMonth ? cell.monthShort : ''}</span></div>${!readOnly ? `<button onclick="activateCustomDayFromCell('${cell.iso}')" class="opacity-0 group-hover:opacity-100 transition-opacity w-full py-1 rounded-lg surface-card border border-theme text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:border-indigo-500 flex items-center justify-center gap-0.5 shadow-2xs"><i data-lucide="plus" class="w-3 h-3"></i><span>Culto</span></button>` : ''}</div>`;
         }).join('')}</div>`;
@@ -1056,22 +1183,23 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
     }
     function renderServiceCell(cell) {
       const team = curTeam(), prefs = state.uiPrefs || DEFAULT_UI_PREFS, srv = team.services[cell.iso] || { assignments: {}, locked: {}, unavail: [], note: '' };
-      const readOnly = isMonthReadOnly() || !asCloud_canEditCalendar(), isToday = cell.iso === TODAY_ISO, isPast = cell.iso < TODAY_ISO && !isMonthReadOnly();
+      const readOnly = isMonthReadOnly() || !asCloud_canEditCalendar(), isPast = cell.iso < TODAY_ISO && !isMonthReadOnly();
+      const isNextMeet = cell.iso === getNextMeetingISO();
       const isSun = cell.dow === 0, isExtra = cell.isNextMonth, isCustom = isCustomServiceDate(cell.iso) && cell.dow !== 0 && cell.dow !== 3;
       const hasMissing = team.tasks.some(tk => !srv.assignments?.[tk.id]);
-      const borderHighlight = isToday ? 'ring-2 ring-indigo-600 border-indigo-600' : isExtra ? 'extra-week-card' : hasMissing && !isPast && !readOnly ? 'border-rose-600' : 'border-theme';
+      const borderHighlight = isNextMeet ? 'next-meeting-ring' : isExtra ? 'extra-week-card' : hasMissing && !isPast && !readOnly ? 'border-rose-600' : 'border-theme';
       let spotlightClass = '';
       if (spotlightMemberId) spotlightClass = Object.values(srv.assignments || {}).includes(spotlightMemberId) ? 'member-spotlight-hit' : 'member-spotlight-dim';
-      const taskColsClass = team.tasks.length >= 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2';
+      const taskColsClass = team.tasks.length >= 4 ? 'grid-cols-2' : team.tasks.length === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2';
       const activeMembersOnly = team.members.filter(m => m.active !== false);
       const dayNamesShort = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-      return `<div class="${isSun ? 'cell-sun-item' : 'cell-wed-item'} surface-card rounded-xl ${state.denseMode ? 'p-1.5 gap-1' : 'p-2 gap-1.5'} flex flex-col justify-between border ${borderHighlight}${isPast ? 'opacity-70' : ''} ${spotlightClass}" style="${!isExtra ? `background-color: ${isSun ? 'var(--sun-tint)' : 'var(--wed-tint)'};` : ''}">
+      return `<div id="srvCard_${cell.iso}" class="${isSun ? 'cell-sun-item' : 'cell-wed-item'} surface-card rounded-xl ${state.denseMode ? 'p-1.5 gap-1' : 'p-2 gap-1.5'} flex flex-col justify-between border ${borderHighlight} ${isPast ? 'past-service-card' : ''} ${spotlightClass}" style="${!isExtra ? `background-color: ${isSun ? 'var(--sun-tint)' : 'var(--wed-tint)'};` : ''}">
         <div class="flex flex-col gap-1">
           <div class="flex items-center justify-between gap-1">
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="mono text-xs font-extrabold px-2 py-0.5 rounded shadow-2xs ${isExtra ? 'bg-emerald-600 text-white' : isSun ? 'badge-sun' : 'badge-wed'}">${dayNamesShort[cell.dow]} ${cell.dayNum} ${isExtra ? cell.monthShort.toUpperCase() : ''}</span>
               ${isExtra ? '<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">EXTRA</span>' : ''}
-              ${isToday ? '<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-600 text-white">HOY</span>' : ''}
+              ${isNextMeet ? '<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-600 text-white">PRÓXIMO</span>' : ''}
               ${prefs.showNotesBtn && srv.note ? `<span ${!readOnly ? `onclick="openNoteEditor('${cell.iso}')"` : ''} class="cursor-pointer text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 truncate max-w-[120px]" title="${srv.note}">${srv.note}</span>` : ''}
             </div>
             ${!readOnly ? `<div class="flex items-center gap-0.5">
@@ -1627,6 +1755,11 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       renderAll(); showToast('Horarios sincronizados sin choques');
     }
     function autoFillMissingOnly() { autoScheduleTeam(state.activeTeamId, false, true); }
+    let batchSelectedMemberId = null;
+    function selectBatchFocusMember(memberId) {
+      batchSelectedMemberId = memberId;
+      renderBatchModal();
+    }
     function renderBatchModal() {
       const team = curTeam(), dates = getActiveServiceDates(), isAdmin = asCloud_canEditCalendar();
       if (!isAdmin) state.batchPanelMode = 'avail';
@@ -1637,38 +1770,87 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       ['btnSaveTpl', 'btnLoadTpl', 'batchModeSwitchWrap', 'btnBatchAutoArm'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isAdmin ? '' : 'none'; });
       document.getElementById('btnModeAvail').className = `px-2.5 py-1 rounded-lg transition-all ${!isAssignMode ? 'bg-indigo-600 text-white shadow-xs' : 'text-muted-theme'}`;
       document.getElementById('btnModeAssign').className = `px-2.5 py-1 rounded-lg transition-all ${isAssignMode ? 'bg-indigo-600 text-white shadow-xs' : 'text-muted-theme'}`;
-      const rescueBanner = document.getElementById('rescueBanner');
-      if (rescueContext && isAdmin) {
-        rescueBanner.classList.remove('hidden'); rescueBanner.classList.add('flex');
-        const dObj = dates.find(x => x.iso === rescueContext.dateISO);
-        document.getElementById('rescueBannerText').innerHTML = `Falta cubrir <b>${rescueContext.taskLabel}</b> el <b>${dObj ? `${dObj.dow === 0 ? 'Domingo' : 'Miércoles'} ${dObj.dayNum}` : rescueContext.dateISO}</b>.`;
-      } else { rescueBanner.classList.add('hidden'); rescueBanner.classList.remove('flex'); }
+      const activeMembers = team.members.filter(m => m.active !== false);
+      const myMember = activeMembers.find(m => normalizePersonName(m.name) === normalizePersonName(asCloud_userProfile.memberName)) || activeMembers[0];
+      if (!batchSelectedMemberId || !activeMembers.some(m => m.id === batchSelectedMemberId)) {
+        batchSelectedMemberId = myMember ? myMember.id : (activeMembers[0]?.id || null);
+      }
+      const focusMem = activeMembers.find(m => m.id === batchSelectedMemberId) || activeMembers[0];
+      const next10Dates = getNext10ServiceDatesFromToday();
       const dayShort = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-      document.getElementById('batchTableHead').innerHTML = `<th class="text-left py-2 px-2 sticky-avail-col">Integrante</th><th class="text-left py-2 px-2">Regla del mes</th>${dates.map(d => `<th class="py-1.5 px-1 text-center mono text-[10px] ${rescueContext && rescueContext.dateISO === d.iso ? 'rescue-highlight' : ''} ${d.isNextMonth ? 'text-emerald-600 dark:text-emerald-400' : ''}"><div class="${d.isNextMonth ? 'text-emerald-600 dark:text-emerald-400' : d.dow === 0 ? 'text-amber-700 dark:text-amber-400' : 'text-indigo-700 dark:text-indigo-400'} font-extrabold">${dayShort[d.dow]}</div><div>${d.dayNum}${d.isNextMonth ? '*' : ''}</div></th>`).join('')}`;
-      document.getElementById('batchTableBody').innerHTML = team.members.filter(m => m.active !== false).map(m => {
+
+      if (focusMem) {
+        next10Dates.forEach(d => {
+          if (!team.services[d.iso]) {
+            const defUnavail = [];
+            team.members.forEach(mem => { if (!mem.freeMaster || (d.dow === 0 && !mem.allowSun) || (d.dow === 3 && !mem.allowWed)) defUnavail.push(mem.id); });
+            const emp = {}; team.tasks.forEach(tk => emp[tk.id] = null);
+            team.services[d.iso] = { assignments: emp, locked: {}, unavail: defUnavail, note: '' };
+          }
+        });
+        const isMasterFree = focusMem.freeMaster !== false, sunRuleOn = isMasterFree && (focusMem.allowSun !== false), wedRuleOn = isMasterFree && (focusMem.allowWed !== false);
+        const isMyRow = normalizePersonName(focusMem.name) === normalizePersonName(asCloud_userProfile.memberName);
+        const canEditThisPerson = !isMonthReadOnly() && (isAdmin || isMyRow);
+
+        const focusBox = document.getElementById('batchPersonFocusContainer');
+        if (focusBox) {
+          focusBox.innerHTML = `
+            <div class="surface-subtle rounded-2xl p-3 border border-theme space-y-3">
+              <!-- 1. Selector de Persona arriba -->
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full shrink-0" style="background:${focusMem.color}"></span>
+                  <span class="text-xs font-bold text-muted-theme">Integrante:</span>
+                </div>
+                <select onchange="selectBatchFocusMember(this.value)" class="flex-1 sm:max-w-xs px-3 py-1.5 rounded-xl surface-card border border-indigo-500/40 font-extrabold text-xs">
+                  ${activeMembers.map(m => `<option value="${m.id}" ${m.id === focusMem.id ? 'selected' : ''}>${m.name} ${normalizePersonName(m.name) === normalizePersonName(asCloud_userProfile.memberName) ? '(Tú)' : ''}</option>`).join('')}
+                </select>
+              </div>
+              <!-- 2. Disponibilidad Base en el medio -->
+              <div class="surface-card rounded-xl p-2.5 border border-theme flex items-center justify-between flex-wrap gap-2 ${!canEditThisPerson ? 'opacity-45 pointer-events-none' : ''}">
+                <span class="text-[11px] font-bold text-muted-theme uppercase tracking-wider">Disponibilidad Base:</span>
+                <div class="flex items-center gap-4">
+                  <label class="switch-label"><input type="checkbox" class="switch-input" ${isMasterFree ? 'checked' : ''} onchange="onSwitchMasterFree('${focusMem.id}', this.checked, true)" /><span class="switch-slider emerald"></span><span class="font-bold text-xs">Libre</span></label>
+                  <label class="switch-label ${!isMasterFree ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${sunRuleOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${focusMem.id}', 0, this.checked, true)" /><span class="switch-slider"></span><span class="font-semibold text-xs">Domingos</span></label>
+                  <label class="switch-label ${!isMasterFree ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${wedRuleOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${focusMem.id}', 3, this.checked, true)" /><span class="switch-slider"></span><span class="font-semibold text-xs">Miércoles</span></label>
+                </div>
+              </div>
+              <!-- 3. Próximos 10 Cultos desde hoy en cuadros grandes -->
+              <div>
+                <div class="text-[11px] font-bold text-muted-theme mb-2">Próximos 10 Cultos desde Hoy (Toca para cambiar Sí / No):</div>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 ${!canEditThisPerson ? 'opacity-45 pointer-events-none' : ''}">
+                  ${next10Dates.map(d => {
+                    const srv = team.services[d.iso] || { assignments: {}, unavail: [] };
+                    const blocked = srv.unavail.includes(focusMem.id);
+                    const crossBusy = getCrossTeamConflict(focusMem.name, d.iso, team.id);
+                    const contradictsRule = !blocked && (!isMasterFree || (d.dow === 0 && !sunRuleOn) || (d.dow === 3 && !wedRuleOn));
+                    return `<button onclick="toggleDateAvailability('${d.iso}', '${focusMem.id}', ${blocked}, true)" class="p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${crossBusy ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' : blocked ? 'bg-rose-500/15 border-rose-500/40 text-rose-400' : contradictsRule ? 'bg-emerald-500/25 border-2 border-rose-500 text-emerald-200' : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'}">
+                      <div>
+                        <div class="text-[10px] font-extrabold uppercase ${d.dow === 0 ? 'text-amber-400' : 'text-indigo-400'}">${dayShort[d.dow]}</div>
+                        <div class="mono text-sm font-extrabold">${d.dayNum} <span class="text-[10px] uppercase opacity-75">${d.monthShort}</span></div>
+                      </div>
+                      <span class="px-2 py-1 rounded-lg font-extrabold text-xs bg-black/25">${crossBusy ? 'Otro' : blocked ? 'No' : 'Sí'}</span>
+                    </button>`;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      document.getElementById('batchTableHead').innerHTML = `<th class="text-left py-2 px-2 sticky-avail-col">Integrante</th><th class="text-left py-2 px-2">Regla</th>${dates.map(d => `<th class="py-1.5 px-1 text-center mono text-[10px]"><div class="${d.dow === 0 ? 'text-amber-400' : 'text-indigo-400'} font-extrabold">${dayShort[d.dow]}</div><div>${d.dayNum}</div></th>`).join('')}`;
+      document.getElementById('batchTableBody').innerHTML = activeMembers.map(m => {
         const isMasterFree = m.freeMaster !== false, sunRuleOn = isMasterFree && (m.allowSun !== false), wedRuleOn = isMasterFree && (m.allowWed !== false);
-        const dispCol = getDisplayColor(m.color), roleIncompatibleForRescue = rescueContext && getMemberTaskSkill(m, rescueContext.taskKey) <= 0;
+        const dispCol = getDisplayColor(m.color);
         const isMyRow = normalizePersonName(m.name) === normalizePersonName(asCloud_userProfile.memberName);
         const rowLockedForMe = isMonthReadOnly() || (!isAdmin && !isMyRow);
-        return `<tr class="${rowLockedForMe ? 'opacity-40 pointer-events-none' : ''} hover:bg-indigo-500/5">
-          <td class="py-2 px-2 font-bold whitespace-nowrap sticky-avail-col border-r border-theme"><div class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style="background:${dispCol}"></span><span>${m.name}</span>${isMyRow ? '<span class="text-[9px] px-1 rounded bg-indigo-500/20 text-indigo-400 font-extrabold">Tú</span>' : ''}</div></td>
-          <td class="py-2 px-2 whitespace-nowrap"><div class="flex items-center gap-3">
-            <label class="switch-label"><input type="checkbox" class="switch-input" ${isMasterFree ? 'checked' : ''} onchange="onSwitchMasterFree('${m.id}', this.checked, true)" /><span class="switch-slider emerald"></span><span class="font-bold text-[11px]">Libre</span></label>
-            <label class="switch-label ${!isMasterFree ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${sunRuleOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 0, this.checked, true)" /><span class="switch-slider"></span><span class="font-semibold text-[11px]">Dom</span></label>
-            <label class="switch-label ${!isMasterFree ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${wedRuleOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 3, this.checked, true)" /><span class="switch-slider"></span><span class="font-semibold text-[11px]">Mié</span></label>
-          </div></td>
+        return `<tr class="${rowLockedForMe ? 'opacity-40 pointer-events-none' : ''}">
+          <td class="py-2 px-2 font-bold whitespace-nowrap sticky-avail-col border-r border-theme"><div class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style="background:${dispCol}"></span><span>${m.name}</span></div></td>
+          <td class="py-2 px-2 whitespace-nowrap"><div class="flex items-center gap-2"><label class="switch-label"><input type="checkbox" class="switch-input" ${isMasterFree ? 'checked' : ''} onchange="onSwitchMasterFree('${m.id}', this.checked, true)" /><span class="switch-slider emerald"></span></label></div></td>
           ${dates.map(d => {
-            const srv = team.services[d.iso] || { assignments: {}, unavail: [] }, blocked = srv.unavail.includes(m.id), crossBusy = getCrossTeamConflict(m.name, d.iso, team.id);
-            const isTargetCol = rescueContext && rescueContext.dateISO === d.iso;
-            const contradictsRule = !blocked && (!isMasterFree || (d.dow === 0 && !sunRuleOn) || (d.dow === 3 && !wedRuleOn));
-            if (!isAssignMode) {
-              const disableRescueClick = isTargetCol && roleIncompatibleForRescue;
-              return `<td class="p-1 text-center ${isTargetCol ? 'rescue-highlight' : ''}"><button ${disableRescueClick ? 'disabled' : `onclick="toggleDateAvailability('${d.iso}', '${m.id}', ${blocked}, true)"`} title="${m.name} — ${dayShort[d.dow]}${d.dayNum}" class="w-9 h-7 rounded-md font-bold text-[10px] ${disableRescueClick ? 'opacity-25 cursor-not-allowed surface-subtle text-muted-theme' : crossBusy ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/50' : blocked ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/35 hover:bg-rose-500/25' : contradictsRule ? 'bg-emerald-500/25 text-emerald-800 dark:text-emerald-200 border-2 border-rose-500 shadow-2xs' : 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40'}">${crossBusy ? 'Otro' : blocked ? 'No' : 'Sí'}</button></td>`;
-            }
-            return `<td class="p-1 text-center ${isTargetCol ? 'rescue-highlight' : ''}"><div class="inline-flex rounded-md overflow-hidden border border-theme">${team.tasks.map((tk, idx) => {
-              const isAssignedHere = srv.assignments?.[tk.id] === m.id, restricted = getMemberTaskSkill(m, tk.id) <= 0 || blocked || crossBusy;
-              return `<button onclick="toggleDirectAssignFromMatrix('${d.iso}', '${tk.id}', '${m.id}')" class="w-5 h-7 text-[10px] font-extrabold ${idx > 0 ? 'border-l border-theme' : ''} ${isAssignedHere ? 'bg-indigo-600 text-white' : restricted ? 'surface-subtle text-muted-theme opacity-35' : 'surface-card hover:bg-indigo-500/20'}">${tk.short}</button>`;
-            }).join('')}</div></td>`;
+            const srv = team.services[d.iso] || { assignments: {}, unavail: [] }, blocked = srv.unavail.includes(m.id);
+            return `<td class="p-1 text-center"><button onclick="toggleDateAvailability('${d.iso}', '${m.id}', ${blocked}, true)" class="w-8 h-7 rounded-md font-bold text-[10px] ${blocked ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/20 text-emerald-300'}">${blocked ? 'No' : 'Sí'}</button></td>`;
           }).join('')}
         </tr>`;
       }).join('');
@@ -1684,6 +1866,7 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       const m = curTeam().members.find(x => x.id === memberId); if (!m) return;
       if (!asCloud_canEditCalendar() && normalizePersonName(m.name) !== normalizePersonName(asCloud_userProfile.memberName)) return;
       pushUndoState(); m.freeMaster = isFree; m.allowSun = isFree; m.allowWed = isFree;
+      getNext10ServiceDatesFromToday().forEach(d => toggleDateAvailability(d.iso, memberId, isFree, false));
       getActiveServiceDates().forEach(d => toggleDateAvailability(d.iso, memberId, isFree, false));
       if (fromBatchModal) renderBatchModal(); else renderTeamModal();
     }
@@ -1692,37 +1875,63 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       if (!asCloud_canEditCalendar() && normalizePersonName(m.name) !== normalizePersonName(asCloud_userProfile.memberName)) return;
       pushUndoState();
       if (targetDow === 0) m.allowSun = isAllowed; if (targetDow === 3) m.allowWed = isAllowed;
+      getNext10ServiceDatesFromToday().forEach(d => { if (d.dow === targetDow) toggleDateAvailability(d.iso, memberId, isAllowed, false); });
       getActiveServiceDates().forEach(d => { if (d.dow === targetDow) toggleDateAvailability(d.iso, memberId, isAllowed, false); });
       if (fromBatchModal) renderBatchModal(); else renderTeamModal();
     }
+    let sliderHoldTimer = null;
+    function armSliderTouchGuard(wrapperEl) {
+      const input = wrapperEl.querySelector('input[type="range"]');
+      if (!input || !input.classList.contains('touch-guard-locked')) return;
+      clearTimeout(sliderHoldTimer);
+      sliderHoldTimer = setTimeout(() => {
+        input.classList.remove('touch-guard-locked');
+        input.classList.add('touch-guard-unlocked');
+      }, 220);
+    }
+    function disarmSliderTouchGuard(wrapperEl) {
+      clearTimeout(sliderHoldTimer);
+      const input = wrapperEl.querySelector('input[type="range"]');
+      if (!input) return;
+      setTimeout(() => {
+        input.classList.add('touch-guard-locked');
+        input.classList.remove('touch-guard-unlocked');
+      }, 1200);
+    }
     function renderTeamModal() {
       const team = curTeam();
+      const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+      const lockCls = isTouchDevice ? 'touch-guard-locked' : '';
       document.getElementById('teamModalTitle').textContent = `Personal y Tareas — ${team.name}`;
-      document.getElementById('tasksEditorList').innerHTML = team.tasks.map(tk => `<div class="flex items-center gap-1.5 px-2 py-1 rounded-lg surface-card border border-theme text-xs"><span class="mono font-extrabold px-1 rounded surface-subtle text-[10px]">${tk.short}</span><input type="text" value="${tk.name}" onchange="updateTaskName('${tk.id}', this.value)" class="bg-transparent font-bold w-24 focus:outline-none text-xs" />${team.tasks.length > 1 ? `<button onclick="deleteTaskFromActiveTeam('${tk.id}')" class="text-rose-500 hover:opacity-80"><i data-lucide="x" class="w-3 h-3"></i></button>` : ''}</div>`).join('');
+      document.getElementById('tasksEditorList').innerHTML = team.tasks.map(tk => `<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg surface-card border border-theme text-xs"><span class="mono font-extrabold px-1.5 py-0.5 rounded surface-subtle text-[10px]">${tk.short}</span><input type="text" value="${tk.name}" onchange="updateTaskName('${tk.id}', this.value)" class="bg-transparent font-bold w-28 focus:outline-none text-xs" />${team.tasks.length > 1 ? `<button onclick="deleteTaskFromActiveTeam('${tk.id}')" class="text-rose-500 hover:opacity-80"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>` : ''}</div>`).join('');
       document.getElementById('teamEditorList').innerHTML = team.members.map(m => {
         const isActive = m.active !== false, isMaster = m.freeMaster !== false, sunOn = isMaster && (m.allowSun !== false), wedOn = isMaster && (m.allowWed !== false);
         const loadVal = typeof m.loadLevel === 'number' ? m.loadLevel : 100, isReserve = loadVal < 20;
-        return `<div class="surface-subtle rounded-xl px-2.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs border border-theme ${!isActive ? 'opacity-45' : ''}">
-          <div class="flex items-center gap-2 min-w-[175px]">
-            <label class="switch-label"><input type="checkbox" class="switch-input" ${isActive ? 'checked' : ''} onchange="toggleMemberActiveState('${m.id}', this.checked)" /><span class="switch-slider emerald"></span></label>
-            <input type="color" value="${m.color}" onchange="updateMemberProp('${m.id}', 'color', this.value)" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent shrink-0" />
-            <input type="text" value="${m.name}" onchange="updateMemberProp('${m.id}', 'name', this.value)" class="px-2 py-1 rounded-lg surface-card border border-theme font-bold w-28 text-xs" />
+        return `<div class="surface-subtle rounded-xl p-3 flex flex-col gap-2.5 text-xs border border-theme ${!isActive ? 'opacity-45' : ''}">
+          <div class="flex items-center justify-between gap-2 flex-wrap border-b border-theme pb-2">
+            <div class="flex items-center gap-2">
+              <label class="switch-label"><input type="checkbox" class="switch-input" ${isActive ? 'checked' : ''} onchange="toggleMemberActiveState('${m.id}', this.checked)" /><span class="switch-slider emerald"></span></label>
+              <input type="color" value="${m.color}" onchange="updateMemberProp('${m.id}', 'color', this.value)" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent shrink-0" />
+              <input type="text" value="${m.name}" onchange="updateMemberProp('${m.id}', 'name', this.value)" class="px-2.5 py-1 rounded-lg surface-card border border-theme font-bold w-32 text-xs" />
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2.5 px-2.5 py-1 rounded-lg surface-card border border-theme ${!isActive ? 'pointer-events-none' : ''}">
+                <label class="switch-label"><input type="checkbox" class="switch-input" ${isMaster ? 'checked' : ''} onchange="onSwitchMasterFree('${m.id}', this.checked, false)" /><span class="switch-slider emerald"></span><span class="font-bold text-[10px]">Libre</span></label>
+                <label class="switch-label ${!isMaster ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${sunOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 0, this.checked, false)" /><span class="switch-slider"></span><span class="font-semibold text-[10px]">Dom</span></label>
+                <label class="switch-label ${!isMaster ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${wedOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 3, this.checked, false)" /><span class="switch-slider"></span><span class="font-semibold text-[10px]">Mié</span></label>
+              </div>
+              ${team.members.length > 1 ? `<button onclick="deleteMember('${m.id}')" class="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+            </div>
           </div>
-          <div class="flex items-center gap-2 px-2 py-1 rounded-lg surface-card border border-theme ${!isActive ? 'pointer-events-none' : ''}">
-            <label class="switch-label"><input type="checkbox" class="switch-input" ${isMaster ? 'checked' : ''} onchange="onSwitchMasterFree('${m.id}', this.checked, false)" /><span class="switch-slider emerald"></span><span class="font-bold text-[10px]">Libre</span></label>
-            <label class="switch-label ${!isMaster ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${sunOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 0, this.checked, false)" /><span class="switch-slider"></span><span class="font-semibold text-[10px]">Dom</span></label>
-            <label class="switch-label ${!isMaster ? 'disabled' : ''}"><input type="checkbox" class="switch-input" ${wedOn ? 'checked' : ''} onchange="onSwitchDayOfWeek('${m.id}', 3, this.checked, false)" /><span class="switch-slider"></span><span class="font-semibold text-[10px]">Mié</span></label>
-          </div>
-          <div class="flex items-center gap-1.5 flex-wrap flex-1 justify-end ${!isActive ? 'pointer-events-none' : ''}">
-            <div class="surface-card rounded-lg px-2 py-1 border border-theme flex flex-col w-[114px]">
-              <div class="flex items-center justify-between text-[10px] mb-0.5"><span class="font-bold text-indigo-600 dark:text-indigo-400">Carga</span><span id="lblLoad_${m.id}" class="mono font-extrabold ${isReserve ? 'text-amber-600 dark:text-amber-400' : ''}">${isReserve ? 'Reserva' : loadVal + '%'}</span></div>
-              <input type="range" min="0" max="100" step="1" value="${loadVal}" oninput="updateMemberLoadLevel('${m.id}', Number(this.value), this)" class="skill-slider w-full ${isReserve ? 'reserve-mode' : ''}" />
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 ${!isActive ? 'pointer-events-none' : ''}">
+            <div onpointerdown="armSliderTouchGuard(this)" onpointerup="disarmSliderTouchGuard(this)" onpointercancel="disarmSliderTouchGuard(this)" class="surface-card rounded-lg px-2.5 py-1.5 border border-theme flex flex-col">
+              <div class="flex items-center justify-between text-[10px] mb-1"><span class="font-bold text-indigo-400">Carga Mensual</span><span id="lblLoad_${m.id}" class="mono font-extrabold ${isReserve ? 'text-amber-400' : ''}">${isReserve ? 'Reserva' : loadVal + '%'}</span></div>
+              <input type="range" min="0" max="100" step="1" value="${loadVal}" oninput="updateMemberLoadLevel('${m.id}', Number(this.value), this)" class="skill-slider w-full ${lockCls} ${isReserve ? 'reserve-mode' : ''}" />
             </div>
             ${team.tasks.map(tk => {
               const skillVal = getMemberTaskSkill(m, tk.id);
-              return `<div class="surface-card rounded-lg px-2 py-1 border border-theme flex flex-col w-[108px] ${skillVal === 0 ? 'opacity-55' : ''}"><div class="flex items-center justify-between text-[10px] mb-0.5"><span class="font-bold truncate max-w-[56px]">${tk.name}</span><span id="lblSkill_${m.id}_${tk.id}" class="mono font-extrabold ${skillVal === 0 ? 'text-rose-500' : ''}">${skillVal === 0 ? 'No' : skillVal + '%'}</span></div><input type="range" min="0" max="100" step="1" value="${skillVal}" oninput="updateMemberTaskSkill('${m.id}', '${tk.id}', Number(this.value), this)" class="skill-slider w-full ${skillVal === 0 ? 'zero-mode' : ''}" /></div>`;
+              return `<div onpointerdown="armSliderTouchGuard(this)" onpointerup="disarmSliderTouchGuard(this)" onpointercancel="disarmSliderTouchGuard(this)" class="surface-card rounded-lg px-2.5 py-1.5 border border-theme flex flex-col ${skillVal === 0 ? 'opacity-55' : ''}"><div class="flex items-center justify-between text-[10px] mb-1"><span class="font-bold truncate">${tk.name}</span><span id="lblSkill_${m.id}_${tk.id}" class="mono font-extrabold ${skillVal === 0 ? 'text-rose-500' : ''}">${skillVal === 0 ? 'No' : skillVal + '%'}</span></div><input type="range" min="0" max="100" step="1" value="${skillVal}" oninput="updateMemberTaskSkill('${m.id}', '${tk.id}', Number(this.value), this)" class="skill-slider w-full ${lockCls} ${skillVal === 0 ? 'zero-mode' : ''}" /></div>`;
             }).join('')}
-            ${team.members.length > 1 ? `<button onclick="deleteMember('${m.id}')" class="p-1 text-rose-500 hover:bg-rose-500/10 rounded-lg ml-0.5"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -2112,14 +2321,21 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
         });
       });
     }
-    function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
+function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
       ctx.save(); ctx.globalAlpha = alpha;
-      ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+      const safeR = Math.max(0, Math.min(r, w / 2, h / 2));
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(x, y, w, h, safeR);
+      } else {
+        ctx.moveTo(x + safeR, y); ctx.arcTo(x + w, y, x + w, y + h, safeR);
+        ctx.arcTo(x + w, y + h, x, y + h, safeR); ctx.arcTo(x, y + h, x, y, safeR); ctx.arcTo(x, y, x + w, y, safeR);
+      }
+      ctx.closePath();
       if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.3; ctx.stroke(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.25; ctx.stroke(); }
       ctx.restore();
-    }
-    async function downloadScheduleImage() {
+    }    async function downloadScheduleImage() {
       const team = curTeam(), canvas = document.getElementById('exportCanvas'), defaultName = `Horario_${team.name}_${state.year}_${state.month + 1}.png`;
       if (ipcRenderer) {
         const res = await ipcRenderer.invoke('save-png-dialog', { defaultName, base64Data: canvas.toDataURL('image/png', 1.0).split(',')[1] });
@@ -2427,11 +2643,36 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
       asCloud_pushStateToFirebase(`Horario oficial de ${mName} publicado`);
       showToast(`Horario de ${mName} publicado y notificado a todos los dispositivos`);
     }
+    let saveDebounceTimer = null;
     function saveState() {
       localStorage.setItem('audiosync_v12_state', JSON.stringify(state));
-      if (ipcRenderer) ipcRenderer.invoke('db-save', state).catch(() => {});
-      asCloud_pushStateToFirebase();
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = setTimeout(() => {
+        if (ipcRenderer) ipcRenderer.invoke('db-save', state).catch(() => {});
+        asCloud_pushStateToFirebase();
+      }, 550);
     }
+    // Gesto de deslizar horizontalmente en el calendario móvil para cambiar de mes y auto-scroll inicial
+    window.addEventListener('load', () => {
+      setTimeout(() => scrollToNextMeeting(false), 320);
+      let touchStartX = 0, touchStartY = 0;
+      const mainEl = document.querySelector('main');
+      if (mainEl) {
+        mainEl.addEventListener('touchstart', (e) => {
+          touchStartX = e.changedTouches[0].screenX;
+          touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+        mainEl.addEventListener('touchend', (e) => {
+          const dx = e.changedTouches[0].screenX - touchStartX;
+          const dy = e.changedTouches[0].screenY - touchStartY;
+          if (Math.abs(dx) > 85 && Math.abs(dx) > Math.abs(dy) * 2.2) {
+            changeMonth(dx < 0 ? 1 : -1);
+            showToast(document.getElementById('monthLabel')?.textContent || '');
+          }
+        }, { passive: true });
+      }
+      document.addEventListener('click', () => closeMonthPickerPopover());
+    });
     async function asCloud_checkForGitHubUpdates(manualCheck = false) {
       try {
         var stEl = document.getElementById('asCloud_settingsUpdateStatus');
