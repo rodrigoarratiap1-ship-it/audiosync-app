@@ -2,28 +2,48 @@
 <html lang="es" class="dark" data-ui-theme="dark_neutral">
 <head>
   <script>
-  // Loader v1.4.0 - Síncrono para Android y transparente para Electron PC
+  // Loader v1.5.0 - Reemplazo real de DOM + Re-ejecución garantizada de scripts en Android APK
   (function(){
-    try{
+    try {
       var isElectron = false;
       try { isElectron = Boolean(typeof require === 'function' && require('electron')); } catch(e){}
-      if (isElectron) return; // En PC Electron ya carga audiosync_latest_ui.html desde disco
-      if (window.__CACHED_APPLIED) return;
+      if (isElectron || window.__CACHED_APPLIED) return;
       var useCached = localStorage.getItem('audiosync_use_cached');
       var cached = localStorage.getItem('audiosync_cached_html');
-      if (cached && (cached.indexOf('##### APP:') > -1 || cached.indexOf('FIN DE index.html') > -1 || cached.length < 5000)) {
-        localStorage.removeItem('audiosync_use_cached');
-        localStorage.removeItem('audiosync_cached_html');
-        return;
-      }
-      if (useCached === '1' && cached && cached.length > 10000) {
+      if (!cached || cached.length < 10000 || cached.indexOf('##### APP:') > -1) return;
+      if (useCached === '1') {
         window.__CACHED_APPLIED = true;
-        document.open();
-        document.write(cached);
-        document.close();
-        return;
+        window.stop();
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(cached, 'text/html');
+        document.head.innerHTML = doc.head.innerHTML;
+        document.body.className = doc.body.className;
+        document.body.innerHTML = doc.body.innerHTML;
+        var scripts = Array.from(doc.querySelectorAll('script'));
+        (function runNext(idx){
+          if (idx >= scripts.length) {
+            if (typeof initApp === 'function') initApp();
+            return;
+          }
+          var oldS = scripts[idx];
+          if (oldS.textContent && oldS.textContent.indexOf('window.__CACHED_APPLIED') > -1) {
+            runNext(idx + 1);
+            return;
+          }
+          var newS = document.createElement('script');
+          if (oldS.src) {
+            newS.src = oldS.src;
+            newS.onload = function(){ runNext(idx + 1); };
+            newS.onerror = function(){ runNext(idx + 1); };
+            document.head.appendChild(newS);
+          } else {
+            newS.textContent = oldS.textContent;
+            document.body.appendChild(newS);
+            runNext(idx + 1);
+          }
+        })(0);
       }
-    }catch(e){ console.log('loader err', e); }
+    } catch(e) { console.log('loader err', e); }
   })();
   </script>
   <meta charset="UTF-8" />
@@ -111,8 +131,8 @@
     .win-btn { width: 32px; height: 24px; border-radius: 6px; border: 1px solid transparent; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: background-color 0.15s ease; }
     .win-btn:hover { background: var(--bg-subtle); color: var(--text-main); border-color: var(--border-col); }
     .win-btn.close:hover { background: #e50914; color: #FFFFFF; }
-* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-    html, body { max-width: 100vw; overflow-x: hidden !important; overscroll-behavior-x: none; }
+* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; overscroll-behavior: none; }
+    html, body { max-width: 100vw; overflow-x: hidden !important; overscroll-behavior: none !important; -webkit-overflow-scrolling: touch; }
     .backdrop-blur-xs { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
     .cal-grid-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.35rem; }
     .sticky-avail-col { position: sticky; left: 0; z-index: 20; background-color: var(--bg-card); box-shadow: 3px 0 8px -2px rgba(0,0,0,0.35); }
@@ -123,13 +143,23 @@
     input[type="range"].skill-slider:active::-webkit-slider-thumb { transform: scale(1.25); }
     .team-locked-sliders input[type="range"], .team-locked-sliders input[type="text"], .team-locked-sliders input[type="color"], .team-locked-sliders .switch-label, .team-locked-sliders .del-mem-btn { pointer-events: none; opacity: 0.45; }
     @keyframes smoothTabFade {
-      from { opacity: 0; transform: translateY(8px); }
+      from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes slideMonthNext {
+      from { opacity: 0; transform: translateX(38px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideMonthPrev {
+      from { opacity: 0; transform: translateX(-38px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
     .smooth-view-enter { animation: smoothTabFade 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    .slide-month-next { animation: slideMonthNext 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    .slide-month-prev { animation: slideMonthPrev 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
     #toast { bottom: 62px !important; left: 12px !important; right: auto !important; transition: all 0.2s ease; }
     @media (max-width: 768px) {
-      #customTitlebar, #btnOpenBatch, #btnOpenExportTop, #btnCalendarMode, #batchModalCloseX, .pc-month-arrow, .empty-placeholder-cell { display: none !important; }
+      #customTitlebar, #btnOpenBatch, #btnOpenExportTop, #btnCalendarMode, #batchModalCloseX, #batchModalBottomCloseBtn, #exportModalCloseX, .empty-placeholder-cell { display: none !important; }
       header.sticky { top: 0 !important; }
       body { padding-bottom: 84px !important; }
       #asCloud_mobileBottomNav { display: grid !important; }
@@ -147,9 +177,35 @@
       #headerToolsRow > * { display: contents !important; }
       #scheduleActionGroup { grid-column: span 2; display: grid !important; grid-template-columns: repeat(3, 1fr); }
       #scheduleActionGroup > button { justify-content: center; }
-      /* Pestaña Disponibilidad pantalla completa estilo Spotify en móvil */
-      #batchModal { position: fixed !important; inset: 0 0 54px 0 !important; padding: 0 !important; background: var(--bg-main) !important; z-index: 35 !important; backdrop-filter: none !important; }
-      #batchModal > div { max-width: 100% !important; max-height: 100% !important; height: 100% !important; border-radius: 0 !important; border: none !important; padding: 12px 10px !important; animation: smoothTabFade 0.2s ease-out; }
+      /* Sistema de Pestañas Nativas reales en celular (oculta el calendario y muestra la pestaña activa en el flujo de la página) */
+      body[data-mob-tab="avail"] main,
+      body[data-mob-tab="export"] main,
+      body[data-mob-tab="avail"] #mobToolsToggleBar,
+      body[data-mob-tab="export"] #mobToolsToggleBar,
+      body[data-mob-tab="avail"] #headerToolsRow,
+      body[data-mob-tab="export"] #headerToolsRow,
+      body[data-mob-tab="avail"] #fabBtn,
+      body[data-mob-tab="export"] #fabBtn { display: none !important; }
+      #batchModal, #exportModal {
+        position: static !important;
+        inset: auto !important;
+        padding: 0 !important;
+        background: transparent !important;
+        z-index: 10 !important;
+        backdrop-filter: none !important;
+        flex: 1 !important;
+      }
+      #batchModal > div, #exportModal > div {
+        max-width: 100% !important;
+        max-height: none !important;
+        height: auto !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: var(--bg-main) !important;
+        padding: 10px 12px 24px 12px !important;
+        animation: smoothTabFade 0.22s ease-out;
+      }
     }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -185,32 +241,37 @@
   <div id="globalSlotDropdown" class="hidden fixed z-[9999] w-64 surface-card rounded-xl shadow-2xl border-2 border-indigo-500/40 py-1 max-h-64 overflow-y-auto"></div>
   <header class="sticky top-0 z-30 surface-card border-b border-theme">
     <div class="max-w-[1440px] mx-auto px-3 py-2 flex flex-col gap-2">
-      <div id="headerTopRow" class="flex items-center justify-between gap-2 flex-wrap">
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <button onclick="scrollToNextMeeting(true)" class="text-[10px] mono px-2 py-1 rounded surface-subtle font-bold flex items-center gap-1.5 hover:border-indigo-500" title="Ir a la próxima reunión">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+      <!-- LÍNEA 1: Hoy (Izq) | Equipos (Centro) | Configuración (Der) -->
+      <div class="flex items-center justify-between gap-1.5">
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button onclick="scrollToNextMeeting(true)" class="text-[10px] mono px-2 py-1.5 rounded-lg surface-subtle font-bold flex items-center gap-1.5 hover:border-indigo-500" title="Ir a la próxima reunión">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
             <span id="todayHeaderBadgeText">HOY</span>
           </button>
-          <div class="flex items-center surface-subtle rounded-lg p-0.5 relative">
-            <button onclick="changeMonth(-1)" class="pc-month-arrow p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
-            <button onclick="openMonthPickerPopover(event)" id="monthLabel" class="px-2 py-0.5 text-xs font-bold capitalize text-center truncate select-none hover:text-indigo-400">Octubre 2026</button>
-            <button onclick="changeMonth(1)" class="pc-month-arrow p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded shrink-0"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
-            <div id="monthPickerPopover" onclick="event.stopPropagation()" class="hidden absolute top-9 left-0 z-50 surface-card rounded-xl p-2.5 shadow-2xl border border-indigo-500/40 w-56 space-y-2 text-xs">
-              <div class="flex items-center justify-between font-bold border-b border-theme pb-1">
-                <button onclick="stepPickerYear(-1)" class="px-2 py-0.5 rounded surface-subtle">-1 Año</button>
-                <span id="pickerYearLabel" class="mono font-extrabold">2026</span>
-                <button onclick="stepPickerYear(1)" class="px-2 py-0.5 rounded surface-subtle">+1 Año</button>
-              </div>
-              <div id="pickerMonthsGrid" class="grid grid-cols-3 gap-1"></div>
-              <button onclick="goToCurrentMonth(); closeMonthPickerPopover();" class="w-full py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px]">Ir al Mes Actual</button>
-            </div>
-          </div>
-          <button id="btnGoCurrentMonth" onclick="goToCurrentMonth()" class="hidden px-2 py-1 rounded-lg text-[11px] font-bold surface-elevated hover:border-indigo-500 items-center gap-1"><i data-lucide="rotate-ccw" class="w-3 h-3"></i><span>Actual</span></button>
-          <span id="readOnlyBadge" class="hidden text-[10px] mono px-2 py-0.5 rounded badge-sun font-bold flex items-center gap-1"><i data-lucide="lock" class="w-3 h-3"></i> HISTÓRICO</span>
+          <span id="readOnlyBadge" class="hidden text-[9px] mono px-1.5 py-0.5 rounded badge-sun font-bold items-center gap-1"><i data-lucide="lock" class="w-2.5 h-2.5"></i></span>
         </div>
-        <div class="flex items-center gap-1.5 justify-end">
-          <div id="teamSwitcherBar" class="flex items-center gap-1 surface-subtle p-0.5 rounded-xl"></div>
-          <button id="btnOpenSettings" onclick="openModal('settingsModal')" class="p-1.5 rounded-lg surface-subtle hover:border-indigo-500" title="Configuración y Acciones"><i data-lucide="settings" class="w-4 h-4"></i></button>
+        <div class="flex items-center gap-1.5 min-w-0">
+          <div id="teamSwitcherBar" class="flex items-center gap-1 surface-subtle p-0.5 rounded-xl overflow-x-auto"></div>
+          <button id="btnOpenSettings" onclick="openModal('settingsModal')" class="p-1.5 rounded-lg surface-subtle hover:border-indigo-500 shrink-0" title="Configuración y Acciones"><i data-lucide="settings" class="w-4 h-4"></i></button>
+        </div>
+      </div>
+
+      <!-- LÍNEA 2: Barra completa de Mes y Año con flecha discreta para volver al mes actual -->
+      <div class="relative flex items-center justify-between w-full py-1 px-2 rounded-xl surface-subtle border border-theme">
+        <button onclick="changeMonth(-1)" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg shrink-0 text-muted-theme hover:text-main"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <div class="flex items-center justify-center flex-1 relative">
+          <button onclick="openMonthPickerPopover(event)" id="monthLabel" class="px-3 py-0.5 text-xs font-extrabold capitalize text-center truncate select-none hover:text-indigo-400">Octubre 2026</button>
+          <button id="btnGoCurrentMonth" onclick="goToCurrentMonth()" class="hidden absolute right-1 p-1 rounded-md surface-card border border-indigo-500/40 text-indigo-400 hover:bg-indigo-600 hover:text-white items-center justify-center shadow-2xs" title="Volver al mes actual"><i data-lucide="rotate-ccw" class="w-3 h-3"></i></button>
+        </div>
+        <button onclick="changeMonth(1)" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg shrink-0 text-muted-theme hover:text-main"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+        <div id="monthPickerPopover" onclick="event.stopPropagation()" class="hidden absolute top-10 left-1/2 -translate-x-1/2 z-50 surface-card rounded-xl p-2.5 shadow-2xl border border-indigo-500/40 w-60 space-y-2 text-xs">
+          <div class="flex items-center justify-between font-bold border-b border-theme pb-1">
+            <button onclick="stepPickerYear(-1)" class="px-2 py-0.5 rounded surface-subtle">-1 Año</button>
+            <span id="pickerYearLabel" class="mono font-extrabold">2026</span>
+            <button onclick="stepPickerYear(1)" class="px-2 py-0.5 rounded surface-subtle">+1 Año</button>
+          </div>
+          <div id="pickerMonthsGrid" class="grid grid-cols-3 gap-1"></div>
+          <button onclick="goToCurrentMonth(); closeMonthPickerPopover();" class="w-full py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px]">Ir al Mes Actual</button>
         </div>
       </div>
       <div id="mobToolsToggleBar" class="hidden items-center justify-between pt-1.5 border-t border-theme">
@@ -283,23 +344,14 @@
   <div id="batchModal" onclick="if(event.target===this) closeBatchModal()" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-3">
     <div class="surface-card rounded-2xl max-w-6xl w-full p-4 max-h-[92vh] flex flex-col shadow-2xl relative">
       <button id="batchModalCloseX" onclick="closeBatchModal()" class="absolute top-3 right-3 p-1.5 rounded-lg text-muted-theme opacity-50 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
-      <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-theme pr-7">
-        <div class="flex items-center gap-2 flex-wrap">
-          <i data-lucide="calendar-check-2" class="w-4 h-4"></i>
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-theme">
+        <div class="flex items-center gap-2">
+          <i data-lucide="calendar-check-2" class="w-4 h-4 text-indigo-400"></i>
           <h2 id="batchModalTitle" class="font-bold text-sm">Disponibilidad</h2>
-          <div class="flex items-center surface-subtle rounded-lg p-0.5 ml-1">
-            <button onclick="changeMonth(-1); renderBatchModal();" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
-            <span id="asCloud_batchMonthLabel" class="px-2 text-xs font-bold capitalize min-w-[120px] text-center">Octubre 2026</span>
-            <button onclick="changeMonth(1); renderBatchModal();" class="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
-          </div>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <button id="btnSaveTpl" onclick="saveAvailabilityTemplate()" class="px-2 py-1 rounded-lg surface-subtle text-[11px] font-semibold hover:border-indigo-500">Guardar Base</button>
-          <button id="btnLoadTpl" onclick="loadAvailabilityTemplate()" class="px-2 py-1 rounded-lg surface-subtle text-[11px] font-semibold hover:border-indigo-500">Cargar Base</button>
-          <div id="batchModeSwitchWrap" class="flex items-center surface-subtle p-1 rounded-xl border border-theme text-xs font-bold">
-            <button id="btnModeAvail" onclick="setBatchPanelMode('avail')" class="px-2.5 py-1 rounded-lg">Disponibilidad</button>
-            <button id="btnModeAssign" onclick="setBatchPanelMode('assign')" class="px-2.5 py-1 rounded-lg">Poner en Turno</button>
-          </div>
+        <div id="batchModeSwitchWrap" class="flex items-center surface-subtle p-1 rounded-xl border border-theme text-xs font-bold">
+          <button id="btnModeAvail" onclick="setBatchPanelMode('avail')" class="px-3 py-1 rounded-lg">Disponibilidad</button>
+          <button id="btnModeAssign" onclick="setBatchPanelMode('assign')" class="px-3 py-1 rounded-lg">Poner en Turno</button>
         </div>
       </div>
       <div id="rescueBanner" class="hidden mt-2.5 px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/50 text-xs font-bold items-center justify-between gap-2">
@@ -322,7 +374,7 @@
         <span class="text-muted-theme">Borde Rojo = Excepción habilitada en un día desactivado por regla base.</span>
         <div class="flex gap-2">
           <button id="btnBatchAutoArm" onclick="autoScheduleTeam(state.activeTeamId, true, true); closeBatchModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold">Auto-Armar Equitativo</button>
-          <button onclick="closeBatchModal()" class="px-3 py-1.5 rounded-lg surface-subtle font-semibold">Listo</button>
+          <button id="batchModalBottomCloseBtn" onclick="closeBatchModal()" class="px-3 py-1.5 rounded-lg surface-subtle font-semibold">Listo</button>
         </div>
       </div>
     </div>
@@ -456,11 +508,13 @@ Gustavo: 4, 11, 25</textarea>
           <summary class="font-bold cursor-pointer text-xs flex items-center justify-between">
             <span class="flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4 text-amber-400"></i><span>2. Accesos Directos y Acciones del Mes</span></span>
           </summary>
-          <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
             <button onclick="undoLastAction()" id="btnUndo" disabled class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 disabled:opacity-35"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i><span>Deshacer</span></button>
             <button onclick="redoLastAction()" id="btnRedo" disabled class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 disabled:opacity-35"><i data-lucide="redo-2" class="w-3.5 h-3.5"></i><span>Rehacer</span></button>
             <button id="btnLockAllMonth" onclick="toggleLockAllMonth()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:text-amber-400"><i data-lucide="lock" class="w-3.5 h-3.5"></i><span>Candado a Todo</span></button>
             <button id="btnClearMonth" onclick="clearMonthUnlocked()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:text-rose-400"><i data-lucide="eraser" class="w-3.5 h-3.5"></i><span>Limpiar Mes</span></button>
+            <button id="btnSaveTpl" onclick="saveAvailabilityTemplate()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="save" class="w-3.5 h-3.5"></i><span>Guardar Base Disp.</span></button>
+            <button id="btnLoadTpl" onclick="loadAvailabilityTemplate()" class="p-2.5 rounded-xl surface-card border border-theme font-bold flex items-center justify-center gap-1.5 hover:border-indigo-500"><i data-lucide="download" class="w-3.5 h-3.5"></i><span>Cargar Base Disp.</span></button>
           </div>
         </details>
 
@@ -549,7 +603,7 @@ Gustavo: 4, 11, 25</textarea>
         <div class="flex items-center gap-2"><i data-lucide="image" class="w-4 h-4"></i><h2 class="font-bold text-sm">Exportar Horario</h2></div>
         <div class="flex items-center gap-2">
           <button id="btnToggleExportInspector" onclick="toggleExportInspector()" class="px-2.5 py-1 rounded-lg surface-subtle text-xs font-bold flex items-center gap-1.5 hover:border-indigo-500"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i><span>Ajustes de Imagen</span></button>
-          <button onclick="closeModal('exportModal')" class="p-1 rounded-lg surface-subtle"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <button id="exportModalCloseX" onclick="closeModal('exportModal')" class="p-1 rounded-lg surface-subtle"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 my-3 overflow-y-auto flex-1">
@@ -1099,11 +1153,13 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       document.getElementById('viewModeText').textContent = state.viewMode === '7col' ? 'Vista 7 Días' : 'Solo Cultos';
       document.getElementById('denseModeText').textContent = state.denseMode ? 'Normal' : 'Compactar';
       document.getElementById('btnNextWeek').classList.toggle('border-emerald-600', state.includeNextWeek);
+      if (!document.getElementById('batchModal')?.classList.contains('hidden')) renderBatchModal();
+      if (!document.getElementById('exportModal')?.classList.contains('hidden')) { generateHighResCanvas(); generateWhatsAppText(); }
       updateUndoRedoButtonsUI(); renderAlertsBar(); renderCalendarHeader(); renderCalendarGrid(); renderFloatingDockMembers(); asCloud_applyRolePermissionsUI(); saveState(); lucide.createIcons();
     }
     function switchActiveTeam(teamId) {
       if (!state.teams[teamId]) return;
-      state.activeTeamId = teamId; spotlightMemberId = null; closeGlobalDropdown(); renderAll(); showToast(`Equipo activo: ${state.teams[teamId].name}`);
+      state.activeTeamId = teamId; spotlightMemberId = null; batchSelectedMemberId = null; closeGlobalDropdown(); renderAll(); showToast(`Equipo activo: ${state.teams[teamId].name}`);
     }
     function renderAlertsBar() {
       const readOnly = isMonthReadOnly() || !asCloud_canEditCalendar();
@@ -1433,33 +1489,51 @@ if (calModeTxt) calModeTxt.textContent = state.viewMode === 'cal' ? 'Ver Tarjeta
       if (chev) chev.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
     }
     function updateSpotifyBottomNavUI(activeTab) {
+      document.body.setAttribute('data-mob-tab', activeTab);
       const tMes = document.getElementById('mobTab_mes');
       const tAvail = document.getElementById('mobTab_avail');
+      const tExp = document.getElementById('mobTab_export');
       if (tMes) tMes.className = `flex flex-col items-center justify-center py-1 rounded-lg transition-colors ${activeTab === 'mes' ? 'text-indigo-500 font-extrabold' : 'text-muted-theme'}`;
       if (tAvail) tAvail.className = `flex flex-col items-center justify-center py-1 rounded-lg transition-colors ${activeTab === 'avail' ? 'text-indigo-500 font-extrabold' : 'text-muted-theme'}`;
+      if (tExp) tExp.className = `flex flex-col items-center justify-center py-1 rounded-lg transition-colors ${activeTab === 'export' ? 'text-indigo-500 font-extrabold' : 'text-muted-theme'}`;
     }
     function onTapMobileMesTab() {
-      const batchEl = document.getElementById('batchModal');
-      const isBatchOpen = batchEl && !batchEl.classList.contains('hidden');
-      if (isBatchOpen) {
-        // Si estaba en la pestaña Disponibilidad, vuelve a "Mes" manteniendo el estilo que tenía
-        closeBatchModal();
+      const currentTab = document.body.getAttribute('data-mob-tab') || 'mes';
+      if (currentTab !== 'mes') {
+        document.getElementById('batchModal')?.classList.add('hidden');
+        document.getElementById('exportModal')?.classList.add('hidden');
         updateSpotifyBottomNavUI('mes');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         const grid = document.getElementById('calendarGrid');
         if (grid) { grid.classList.remove('smooth-view-enter'); void grid.offsetWidth; grid.classList.add('smooth-view-enter'); }
       } else {
-        // Si ya estaba en "Mes", alterna entre Tarjetas y Modo Calendario con animación suave
         toggleCalendarGridMode();
         const grid = document.getElementById('calendarGrid');
         if (grid) { grid.classList.remove('smooth-view-enter'); void grid.offsetWidth; grid.classList.add('smooth-view-enter'); }
       }
     }
     function onTapMobileAvailTab() {
-      openBatchModalNormal();
+      document.getElementById('exportModal')?.classList.add('hidden');
+      rescueContext = null;
+      // Si el usuario estaba mirando un mes pasado (histórico), salta automáticamente al Mes Actual.
+      // Si estaba en el mes actual o en un mes futuro (ej. próximo mes), conserva ese mes seleccionado.
+      if (isMonthReadOnly()) {
+        state.year = CURRENT_YEAR;
+        state.month = CURRENT_MONTH;
+      }
       updateSpotifyBottomNavUI('avail');
+      document.getElementById('batchModal')?.classList.remove('hidden');
+      renderAll();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    function openBatchModalNormal() { rescueContext = null; openModal('batchModal'); updateSpotifyBottomNavUI('avail'); }
-    function closeBatchModal() { rescueContext = null; closeModal('batchModal'); updateSpotifyBottomNavUI('mes'); }
+    function openBatchModalNormal() {
+      onTapMobileAvailTab();
+    }
+    function closeBatchModal() {
+      rescueContext = null;
+      closeModal('batchModal');
+      updateSpotifyBottomNavUI('mes');
+    }
     function setBatchPanelMode(mode) { state.batchPanelMode = mode; renderBatchModal(); }
     function toggleFloatingDock(forceState) { const dock = document.getElementById('floatingDock'); dock.classList.toggle('hidden', !(forceState !== undefined ? forceState : dock.classList.contains('hidden'))); }
     function toggleSpotlightMember(memberId) { spotlightMemberId = spotlightMemberId === memberId ? null : memberId; renderAll(); }
@@ -2262,11 +2336,15 @@ Devuelve SOLO un JSON válido: {"summary":"resumen","rules":[{"memberId":"id","u
     function resetExportConfig() { if (!asCloud_canEditCalendar()) return; state.exportConfig = { ...DEFAULT_EXPORT_CONFIG }; syncExportInspectorInputs(); saveState(); generateHighResCanvas(); }
     function toggleExportInspector() { document.getElementById('exportInspectorPanel').classList.toggle('hidden'); }
     function openExportModal() {
+      document.getElementById('batchModal')?.classList.add('hidden');
       syncExportInspectorInputs();
       const isAdmin = asCloud_canEditCalendar();
       document.getElementById('exportInspectorPanel').classList.toggle('hidden', !isAdmin);
       document.getElementById('btnToggleExportInspector').classList.toggle('hidden', !isAdmin);
-      openModal('exportModal'); generateHighResCanvas(); generateWhatsAppText();
+      openModal('exportModal');
+      updateSpotifyBottomNavUI('export');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      generateHighResCanvas(); generateWhatsAppText();
     }
     function generateWhatsAppText() {
       const team = curTeam(), monthName = new Date(state.year, state.month, 1).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase();
@@ -2392,7 +2470,18 @@ function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
     function changeMonth(delta) {
       let m = state.month + delta, y = state.year;
       if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; }
+      const isAvailTab = document.body.getAttribute('data-mob-tab') === 'avail' || !document.getElementById('batchModal')?.classList.contains('hidden');
+      if (isAvailTab && (y < CURRENT_YEAR || (y === CURRENT_YEAR && m < CURRENT_MONTH))) {
+        showToast('En Disponibilidad solo puedes editar desde el mes actual en adelante', true);
+        return;
+      }
       state.month = m; state.year = y; closeGlobalDropdown(); renderAll();
+      const animTarget = isAvailTab ? document.getElementById('batchPersonFocusContainer') : document.getElementById('calendarGrid');
+      if (animTarget) {
+        animTarget.classList.remove('slide-month-next', 'slide-month-prev');
+        void animTarget.offsetWidth;
+        animTarget.classList.add(delta > 0 ? 'slide-month-next' : 'slide-month-prev');
+      }
     }
     function goToCurrentMonth() { state.year = CURRENT_YEAR; state.month = CURRENT_MONTH; closeGlobalDropdown(); renderAll(); showToast('De vuelta en el mes actual'); }
     function toggleViewMode() { state.viewMode = state.viewMode === '7col' ? '2col' : '7col'; renderAll(); }
@@ -2416,8 +2505,13 @@ function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
     }
     const AS_FIREBASE_DB_URL = "https://audiosync-740f3-default-rtdb.firebaseio.com";
     const AS_GITHUB_REPO = "rodrigoarratiap1-ship-it/audiosync-app";
-    const AS_LOCAL_VERSION = "1.4.0";
-    function getInstalledVersion(){ return AS_LOCAL_VERSION; }
+    const AS_LOCAL_VERSION = "1.5.0";
+    function getInstalledVersion(){
+      const cachedVer = localStorage.getItem('audiosync_cached_version');
+      const useCached = localStorage.getItem('audiosync_use_cached');
+      if (useCached === '1' && cachedVer) return cachedVer;
+      return AS_LOCAL_VERSION;
+    }
     const AS_DEV_SECRET = "76786471";
     const isDesktopElectron = Boolean(ipcRenderer);
     if (!state.authSystem) {
@@ -2799,7 +2893,8 @@ function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
             var e = txt.lastIndexOf('</html>');
             if (s > -1 && e > -1) txt = txt.substring(s, e + 7);
             if (remoteVersion) {
-              txt = txt.replace(/const\s+AS_LOCAL_VERSION\s*=\s*["'][^"']*["']/, 'const AS_LOCAL_VERSION = "' + remoteVersion + '"');
+              // Usamos replace global (/g) para actualizar la constante real sin que el propio regex la bloquee
+              txt = txt.replace(/AS_LOCAL_VERSION\s*=\s*["'][0-9.]+["']/g, 'AS_LOCAL_VERSION = "' + remoteVersion + '"');
             }
             newHtml = txt;
             workingHtmlUrl = htmlUrls[j];
@@ -2813,26 +2908,25 @@ function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
         return;
       }
       try {
-        // 1. Si estamos en PC (Electron), guardamos el archivo físico en disco y recargamos la ventana nativa
-        if (ipcRenderer && workingHtmlUrl) {
-          localStorage.removeItem('audiosync_use_cached');
-          localStorage.removeItem('audiosync_cached_html');
-          showToast('Actualizando aplicación en PC...');
-          const res = await ipcRenderer.invoke('apply-github-update', { rawHtmlUrl: workingHtmlUrl });
-          if (!res?.ok) showToast('Error al actualizar en PC: ' + (res?.error || ''), true);
-          return;
-        }
-        // 2. Si estamos en Celular (Android APK), guardamos en localStorage y recargamos desde cero
-        localStorage.setItem('audiosync_cached_html', newHtml);
-        localStorage.setItem('audiosync_use_cached', '1');
-        localStorage.setItem('audiosync_cached_at', Date.now().toString());
         if (remoteVersion) {
           localStorage.setItem('audiosync_cached_version', remoteVersion);
         }
+        localStorage.setItem('audiosync_cached_html', newHtml);
+        localStorage.setItem('audiosync_use_cached', '1');
+        localStorage.setItem('audiosync_cached_at', Date.now().toString());
+
+        // 1. Si estamos en PC (Electron), además sobreescribimos el archivo en disco
+        if (ipcRenderer && workingHtmlUrl) {
+          showToast('Actualizando aplicación en PC a v' + (remoteVersion || '') + '...');
+          await ipcRenderer.invoke('apply-github-update', { rawHtmlUrl: workingHtmlUrl });
+          setTimeout(() => location.reload(), 400);
+          return;
+        }
+        // 2. Si estamos en Celular (Android APK), recargamos para que el nuevo Loader inyecte el DOM y scripts
         showToast('¡Actualizado a v' + (remoteVersion || '') + '! Reiniciando...');
         setTimeout(function() {
           location.reload();
-        }, 600);
+        }, 500);
       } catch (e) {
         if (stEl) stEl.textContent = "Error al guardar: " + e.message;
       }
@@ -2840,7 +2934,7 @@ function drawRoundedRect(ctx, x, y, w, h, r, fill, stroke = null, alpha = 1) {
 
     async function initApp() {
       const verSpan = document.getElementById('asCloud_settingsUpdateStatus');
-      if (verSpan) verSpan.textContent = 'Versión instalada: v' + AS_LOCAL_VERSION;
+      if (verSpan) verSpan.textContent = 'Versión instalada: v' + getInstalledVersion();
 
       let loaded = null;
       if (ipcRenderer) { try { loaded = await ipcRenderer.invoke('db-load'); } catch (e) {} }
